@@ -114,39 +114,9 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
 
     delegate_to_from_str!(deserialize_u64, visit_u64);
 
-    fn deserialize_f32<V>(self, visitor: V) -> Result<<V as Visitor<'de>>::Value, Error<'de>>
-        where
-            V: Visitor<'de>,
-        {
-            trace!(
-                "RobtopDeserializer::{} called called on {:?}",
-                "deserialize_f32",
-                self.peek_token()
-            );
+    delegate_to_from_str!(deserialize_f32, visit_f32);
 
-            match self.consume_token()?.map(lexical::parse_lossy) {
-                Some(Ok(parsed)) => visitor.visit_f32(parsed),
-                Some(Err(_error)) => unimplemented!("Benchmark purpose"),
-                None => visitor.visit_none(),
-            }
-        }
-
-        fn deserialize_f64<V>(self, visitor: V) -> Result<<V as Visitor<'de>>::Value, Error<'de>>
-        where
-            V: Visitor<'de>,
-        {
-            trace!(
-                "RobtopDeserializer::{} called called on {:?}",
-                "deserialize_f64",
-                self.peek_token()
-            );
-
-            match self.consume_token()?.map(lexical::parse_lossy) {
-                Some(Ok(parsed)) => visitor.visit_f64(parsed),
-                Some(Err(_error)) => unimplemented!("Benchmark purpose"),
-                None => visitor.visit_none(),
-            }
-        }
+    delegate_to_from_str!(deserialize_f64, visit_f64);
 
     fn deserialize_any<V>(self, _visitor: V) -> Result<<V as Visitor<'de>>::Value, Error<'de>>
     where

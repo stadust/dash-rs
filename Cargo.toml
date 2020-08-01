@@ -14,7 +14,6 @@ percent-encoding = "2.1.0"
 itoa = "0.4.4"
 dtoa = "0.4.4"
 flate2 = {version = "1.0.14", features = ["zlib"], default-features=false}
-lexical = "5.2.0"
 
 [dev-dependencies]
 env_logger = "0.7.1"
