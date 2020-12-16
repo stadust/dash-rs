@@ -7,8 +7,8 @@ use crate::{
 use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
-pub const LEVEL_COMMENTS_ENDPOINT: &str = "getGJComments21.php?";
-pub const PROFILE_COMMENT_ENDPOINT: &str = "getGJAccountComments20.php?";
+pub const LEVEL_COMMENTS_ENDPOINT: &str = "getGJComments21.php";
+pub const PROFILE_COMMENT_ENDPOINT: &str = "getGJAccountComments20.php";
 
 /// The different orderings that can be requested for level comments
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -85,7 +85,7 @@ impl<'a> LevelCommentsRequest<'a> {
     const_setter!(page: u32);
 
     pub fn to_url(&self) -> String {
-        format!("{}{}{}", REQUEST_BASE_URL, LEVEL_COMMENTS_ENDPOINT, super::to_string(self))
+        format!("{}{}?{}", REQUEST_BASE_URL, LEVEL_COMMENTS_ENDPOINT, super::to_string(self))
     }
 
     pub const fn new(level: u64) -> Self {
@@ -165,7 +165,7 @@ impl<'a> ProfileCommentsRequest<'a> {
     const_setter!(account_id: u64);
 
     pub fn to_url(&self) -> String {
-        format!("{}{}{}", REQUEST_BASE_URL, PROFILE_COMMENT_ENDPOINT, super::to_string(self))
+        format!("{}{}?{}", REQUEST_BASE_URL, PROFILE_COMMENT_ENDPOINT, super::to_string(self))
     }
 
     pub const fn new(account: u64) -> Self {

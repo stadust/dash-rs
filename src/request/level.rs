@@ -7,8 +7,8 @@ use crate::{
 };
 use serde::{Deserialize, Serialize, Serializer};
 
-pub const DOWNLOAD_LEVEL_ENDPOINT: &str = "downloadGJLevel22.php?";
-pub const SEARCH_LEVEL_ENDPOINT: &str = "getGJLevels21.php?";
+pub const DOWNLOAD_LEVEL_ENDPOINT: &str = "downloadGJLevel22.php";
+pub const SEARCH_LEVEL_ENDPOINT: &str = "getGJLevels21.php";
 
 /// Struct modelled after a request to `downloadGJLevel22.php`.
 ///
@@ -85,7 +85,7 @@ impl<'a> LevelRequest<'a> {
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT, super::to_string(self))
+        format!("{}{}?{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT, super::to_string(self))
     }
 }
 
@@ -535,7 +535,7 @@ impl<'a> LevelsRequest<'a> {
     const_setter!(request_type: LevelRequestType);
 
     pub fn to_url(&self) -> String {
-        format!("{}{}{}", REQUEST_BASE_URL, SEARCH_LEVEL_ENDPOINT, super::to_string(self))
+        format!("{}{}?{}", REQUEST_BASE_URL, SEARCH_LEVEL_ENDPOINT, super::to_string(self))
     }
 
     pub fn with_base(base: BaseRequest<'a>) -> Self {
