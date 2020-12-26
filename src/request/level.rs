@@ -15,7 +15,7 @@ pub const SEARCH_LEVEL_ENDPOINT: &str = "getGJLevels21.php";
 /// In the Geometry Dash API, this endpoint is used to download a level from
 /// the servers and retrieve some additional information that isn't provided
 /// with the response to a [`LevelsRequest`]
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, Hash)]
 pub struct LevelRequest<'a> {
     /// The base request data
     #[serde(borrow)]
@@ -85,7 +85,13 @@ impl<'a> LevelRequest<'a> {
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}?{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT, super::to_string(self))
+        format!("{}{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT)
+    }
+}
+
+impl ToString for LevelRequest<'_> {
+    fn to_string(&self) -> String {
+        super::to_string(self)
     }
 }
 
@@ -446,7 +452,7 @@ fn is_false(b: &bool) -> bool {
 /// levels matching the specified criteria, along with their
 /// [`NewgroundsSong`](crate::model::song::NewgroundsSong)s and
 /// [`Creator`](crate::model::creator::Creator)s
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize, Hash)]
 pub struct LevelsRequest<'a> {
     /// The base request data
     #[serde(borrow)]
@@ -535,7 +541,7 @@ impl<'a> LevelsRequest<'a> {
     const_setter!(request_type: LevelRequestType);
 
     pub fn to_url(&self) -> String {
-        format!("{}{}?{}", REQUEST_BASE_URL, SEARCH_LEVEL_ENDPOINT, super::to_string(self))
+        format!("{}{}", REQUEST_BASE_URL, SEARCH_LEVEL_ENDPOINT)
     }
 
     pub fn with_base(base: BaseRequest<'a>) -> Self {
@@ -587,8 +593,14 @@ impl<'a> LevelsRequest<'a> {
     }
 }
 
+impl ToString for LevelsRequest<'_> {
+    fn to_string(&self) -> String {
+        super::to_string(self)
+    }
+}
+
 /// Newtype struct for [`DemonRating`] to implement robtop's serialization for requests on
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 struct DemonFilter(DemonRating);
 
 impl Serialize for DemonFilter {
@@ -610,7 +622,7 @@ impl Serialize for DemonFilter {
 }
 
 /// Newtype struct for [`LevelLength`] to implement robtop's serialization for requests on
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 struct LengthFilter(LevelLength);
 
 impl Serialize for LengthFilter {
@@ -632,7 +644,7 @@ impl Serialize for LengthFilter {
 }
 
 /// Newtype struct for [`LevelRating`] to implement robtop's serialization for requests on
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 struct RatingFilter(LevelRating);
 
 impl Serialize for RatingFilter {
