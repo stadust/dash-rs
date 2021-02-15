@@ -1,6 +1,6 @@
 //! Module containing the error type for deserialization errors
 
-use serde::export::Formatter;
+use serde::__private::Formatter;
 use std::fmt::Display;
 
 /// Errors that can occur during deserialization

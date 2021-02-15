@@ -1,6 +1,6 @@
 use base64::{DecodeError, URL_SAFE};
 use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
-use serde::{export::Formatter, ser::Error as _, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{__private::Formatter, ser::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 use std::{borrow::Cow, fmt::Display, num::ParseIntError, str::Utf8Error, string::FromUtf8Error};
 
 /// Enum modelling the different errors that can occur during processing of a [`Thunk`]
