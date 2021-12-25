@@ -8,6 +8,7 @@ use serde::Serialize;
 
 pub const LEVEL_COMMENTS_ENDPOINT: &str = "getGJComments21.php";
 pub const PROFILE_COMMENT_ENDPOINT: &str = "getGJAccountComments20.php";
+pub const COMMENT_HISTORY_ENDPOINT: &str = "getGJCommentHistory.php";
 
 /// The different orderings that can be requested for level comments
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -187,9 +188,76 @@ impl ToString for ProfileCommentsRequest<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, Hash)]
+pub struct CommentHistoryRequest<'a> {
+    /// The base request data
+    pub base: BaseRequest<'a>,
+
+    /// Unknown, probably related to pagination
+    ///
+    /// ## GD Internals:
+    /// This field is called `total` in the boomlings API
+    pub total: u32,
+
+    /// The page of comments to retrieve. The first page is page `0` and pages will contain `total` number of comments
+    ///
+    /// ## GD Internals:
+    /// This field is called `page` in the boomlings API
+    pub page: u32,
+
+    /// What to sort by comments by
+    ///
+    /// ## GD Internals:
+    /// This field is called `mode` in the boomlings API.
+    #[serde(rename = "mode")]
+    pub sort_mode: SortMode,
+
+    /// The id of the player to retrieve comments, this is `not` the account ID
+    ///
+    /// ## GD Internals:
+    /// This field is called `userID` in the boomlings API.
+    #[serde(rename = "userID")]
+    pub player_id: u64,
+
+    /// The amount of comments to retrieve. Note that while in-game this can only be set to 20 or 40 however, a max of 100 comments can be returned
+    /// ## GD Internals:
+    /// This field is called `count` in the boomlings API
+    #[serde(rename = "count")]
+    pub limit: u32,
+}
+
+impl<'a> CommentHistoryRequest<'a> {
+    const_setter!(limit: u32);
+    const_setter!(page: u32);
+
+    pub fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, COMMENT_HISTORY_ENDPOINT)
+    }
+
+    pub const fn with_base(base: BaseRequest<'a>, player: u64) -> Self {
+        CommentHistoryRequest {
+            player_id: player,
+            base,
+            page: 0,
+            total: 0,
+            sort_mode: SortMode::Recent,
+            limit: 20,
+        }
+    }
+
+    pub const fn new(player: u64) -> Self {
+        Self::with_base(GD_21, player)
+    }
+
+    pub const fn sort_mode(mut self, sort_mode: SortMode) -> Self {
+        self.sort_mode = sort_mode;
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::request::comment::{LevelCommentsRequest, ProfileCommentsRequest};
+    use crate::request::comment::{LevelCommentsRequest, ProfileCommentsRequest, CommentHistoryRequest};
 
     #[test]
     fn serialize_level_comments() {
@@ -219,5 +287,20 @@ mod tests {
             super::super::to_string(request),
             "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=2&accountID=1710032"
         );
+    }
+
+    #[test]
+    fn serialize_comment_history() {
+        if let Err(err) = env_logger::builder().is_test(true).try_init() {
+            // nothing to make the tests fail over
+            eprintln!("Error setting up env_logger: {:?}", err)
+        }
+
+        let request = CommentHistoryRequest::new(159782398)
+            .limit(2);
+
+        println!("{}\n{}", request.to_url(), super::super::to_string(request));
+
+        assert_eq!(true, true)
     }
 }

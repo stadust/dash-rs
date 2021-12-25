@@ -1,6 +1,6 @@
-mod de;
-mod ser;
-mod thunk;
+pub(crate) mod de;
+pub(crate) mod ser;
+pub(crate) mod thunk;
 
 pub use de::{error::Error as DeError, indexed::IndexedDeserializer};
 pub use ser::{error::Error as SerError, indexed::IndexedSerializer, request::RequestSerializer};
