@@ -17,9 +17,6 @@ fn generate_boilerplate() -> std::io::Result<()> {
 
         let file_stem = entry.path().file_stem().unwrap().to_str().unwrap().to_string();
         let filename = format!("{}.boilerplate", file_stem);
-
-        println!("{}", &filename);
-
         let dest_path = Path::new(&out_dir).join(filename);
 
         let mut f = File::create(dest_path)?;

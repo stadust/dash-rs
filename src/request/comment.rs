@@ -299,8 +299,6 @@ mod tests {
         let request = CommentHistoryRequest::new(159782398)
             .limit(2);
 
-        println!("{}\n{}", request.to_url(), super::super::to_string(request));
-
-        assert_eq!(true, true)
+        assert_eq!(super::super::to_string(request), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&mode=0&userID=159782398&count=2")
     }
 }
