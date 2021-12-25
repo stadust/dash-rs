@@ -14,6 +14,7 @@ use crate::{
     },
     DeError, HasRobtopFormat,
 };
+
 use serde::__private::Formatter;
 use std::fmt::Display;
 
