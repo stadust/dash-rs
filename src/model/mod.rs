@@ -16,7 +16,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use crate::DeError;
 
 pub mod comment;
 pub mod creator;
@@ -68,8 +67,4 @@ impl Display for GameVersion {
             GameVersion::Version { minor, major } => write!(f, "{}.{}", major, minor),
         }
     }
-}
-
-pub trait FromRobTopStr {
-    fn from_robtop_str(robtop_str: &str) -> Result<Self, DeError> where Self: Sized;
 }
