@@ -18,7 +18,7 @@ indices:
     type: u64
     maps_to: comment_id
   - value: 7
-    type: bool
+    type: Option<bool>
     maps_to: is_flagged_spam
   - value: 9
     type: '&''src str'

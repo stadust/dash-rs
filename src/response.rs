@@ -4,7 +4,7 @@
 use crate::{
     model::{
         comment::{
-            level::{CommentUser, LevelComment, CommentHistory},
+            level::{CommentUser, LevelComment},
             profile::ProfileComment,
         },
         creator::Creator,
@@ -183,7 +183,7 @@ pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment
         .collect()
 }
 
-pub fn parse_get_gj_comment_history_response(response: &str) -> Result<Vec<CommentHistory>, ResponseError> {
+pub fn parse_get_gj_comment_history_response(response: &str) -> Result<Vec<LevelComment>, ResponseError> {
     if response == "-1" {
         return Err(ResponseError::NotFound)
     }
@@ -199,7 +199,7 @@ pub fn parse_get_gj_comment_history_response(response: &str) -> Result<Vec<Comme
             let mut parts = fragment.split(':');
 
             if let (Some(raw_comment), Some(raw_user)) = (parts.next(), parts.next()) {
-                let mut comment = CommentHistory::from_robtop_str(raw_comment)?;
+                let mut comment = LevelComment::from_robtop_str(raw_comment)?;
 
                 comment.user = if raw_user == "1~~9~~10~~11~~14~~15~~16~" {
                     None
@@ -226,4 +226,16 @@ pub fn parse_get_gj_acccount_comments_response(response: &str) -> Result<Vec<Pro
         .split('|')
         .map(|fragment| Ok(ProfileComment::from_robtop_str(fragment)?))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::response::parse_get_gj_comment_history_response;
+
+    #[test]
+    fn serialize_levels_request() {
+        let test = parse_get_gj_comment_history_response("2~Rmlyc3Q=~1~76298358~3~3713125~4~2~10~0~9~1 week~6~33134786~11~2~12~75,255,75:1~Ryder~9~101~10~7~11~9~14~0~15~2~16~57903|2~TG92ZSB0byBzZWUgaXQ=~1~69201939~3~3713125~4~5~10~0~9~2 weeks~6~32301881~11~2~12~75,255,75:1~Ryder~9~101~10~7~11~9~14~0~15~2~16~57903#999:0:2");
+
+        println!("{:?}", test);
+    }
 }
