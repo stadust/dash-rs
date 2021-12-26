@@ -44,68 +44,7 @@ pub struct LevelComment<'a> {
     ///
     /// ## GD Internals
     /// This value is provided at index `7`
-    pub is_flagged_spam: bool,
-
-    /// Robtop's completely braindead way of keeping track of when this [`LevelComment`] was posted
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `9`
-    pub time_since_post: Cow<'a, str>,
-
-    /// If enabled by the user making this [`LevelComment`], the progress they have done on the
-    /// level this comment is on.
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `10`
-    pub progress: Option<u8>,
-
-    /// The level of moderator the player that made this [`LevelComment`] is
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `11`
-    pub mod_level: ModLevel,
-
-    /// If this [`LevelComment`]'s text is displayed in a special color (blue for robtop, green for
-    /// elder mods), the RGB code of that color will be stored here
-    ///
-    /// Note that the yellow color of comments made by the creator is not reported here.
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `12`
-    pub special_color: Option<Color>,
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
-pub struct CommentHistory<'a> {
-    /// Information about the user that made this [`LevelComment`]. Is generally a [`CommentUser`]
-    /// object
-    pub user: Option<CommentUser<'a>>,
-
-    /// The actual content of the [`LevelComment`] made.
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `2` and is base64 encoded
-    #[serde(borrow)]
-    pub content: Option<Thunk<'a, Base64Decoded<'a>>>,
-
-    /// The unique user id of the player who made this [`LevelComment`]
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `3`
-    pub user_id: u64,
-
-    /// The amount of likes this [`LevelComment`] has received
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `4`
-    pub likes: i32,
-
-    /// The unique id of this [`LevelComment`]. Additionally, there is also no [`ProfileComment`]
-    /// with this idea
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `6`
-    pub comment_id: u64,
+    pub is_flagged_spam: Option<bool>,
 
     /// Robtop's completely braindead way of keeping track of when this [`LevelComment`] was posted
     ///
@@ -193,7 +132,7 @@ mod internal {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     use crate::model::{
-        comment::level::{CommentUser, LevelComment, CommentHistory},
+        comment::level::{CommentUser, LevelComment},
         user::Color,
     };
     use std::io::Write;
@@ -230,6 +169,5 @@ mod internal {
     }
 
     include!(concat!(env!("OUT_DIR"), "/level_comment.boilerplate"));
-    include!(concat!(env!("OUT_DIR"), "/comment_history.boilerplate"));
     include!(concat!(env!("OUT_DIR"), "/comment_user.boilerplate"));
 }

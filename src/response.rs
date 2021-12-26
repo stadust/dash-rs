@@ -4,7 +4,7 @@
 use crate::{
     model::{
         comment::{
-            level::{CommentUser, LevelComment, CommentHistory},
+            level::{CommentUser, LevelComment},
             profile::ProfileComment,
         },
         creator::Creator,
@@ -168,38 +168,6 @@ pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment
 
             if let (Some(raw_comment), Some(raw_user)) = (parts.next(), parts.next()) {
                 let mut comment = LevelComment::from_robtop_str(raw_comment)?;
-
-                comment.user = if raw_user == "1~~9~~10~~11~~14~~15~~16~" {
-                    None
-                } else {
-                    Some(CommentUser::from_robtop_str(raw_user)?)
-                };
-
-                Ok(comment)
-            } else {
-                Err(ResponseError::UnexpectedFormat)
-            }
-        })
-        .collect()
-}
-
-pub fn parse_get_gj_comment_history_response(response: &str) -> Result<Vec<CommentHistory>, ResponseError> {
-    if response == "-1" {
-        return Err(ResponseError::NotFound)
-    }
-
-    let mut sections = response.split('#');
-
-    // The format here is very weird. We have a '|' separated list of (comment, user) pairs, and said
-    // pair is separated by a ':'
-
-    section!(sections)
-        .split('|')
-        .map(|fragment| {
-            let mut parts = fragment.split(':');
-
-            if let (Some(raw_comment), Some(raw_user)) = (parts.next(), parts.next()) {
-                let mut comment = CommentHistory::from_robtop_str(raw_comment)?;
 
                 comment.user = if raw_user == "1~~9~~10~~11~~14~~15~~16~" {
                     None
