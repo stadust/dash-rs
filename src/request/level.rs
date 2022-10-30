@@ -1,3 +1,6 @@
+use reqwest::{
+    Response, Error
+};
 use crate::{
     model::{
         level::{DemonRating, LevelLength, LevelRating},
@@ -6,6 +9,8 @@ use crate::{
     request::{BaseRequest, GD_21, REQUEST_BASE_URL},
 };
 use serde::{Deserialize, Serialize, Serializer};
+use async_trait::async_trait;
+use crate::request::Executable;
 
 pub const DOWNLOAD_LEVEL_ENDPOINT: &str = "downloadGJLevel22.php";
 pub const SEARCH_LEVEL_ENDPOINT: &str = "getGJLevels21.php";
@@ -57,6 +62,10 @@ impl<'a> LevelRequest<'a> {
     }
 
     const_setter! {
+        level_id: u64
+    }
+
+    const_setter! {
         /// Sets the value of the `inc` field
         ///
         /// Allows builder-style creation of requests
@@ -86,6 +95,20 @@ impl<'a> LevelRequest<'a> {
 
     pub fn to_url(&self) -> String {
         format!("{}{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT)
+    }
+}
+
+#[async_trait]
+impl Executable for LevelRequest<'_> {
+    async fn execute(&self) -> Result<Response, Error> {
+        let reqwest_client = reqwest::Client::new();
+        println!("{}?{}", self.to_url(), self.to_string());
+        reqwest_client
+            .post(self.to_url())
+            .body(self.to_string())
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .send()
+            .await
     }
 }
 
@@ -593,6 +616,20 @@ impl<'a> LevelsRequest<'a> {
     }
 }
 
+#[async_trait]
+impl Executable for LevelsRequest<'_>{
+    async fn execute(&self) -> Result<Response, Error> {
+        let reqwest_client = reqwest::Client::new();
+        println!("{}?{}", self.to_url(), self.to_string());
+        reqwest_client
+            .post(self.to_url())
+            .body(self.to_string())
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .send()
+            .await
+    }
+}
+
 impl ToString for LevelsRequest<'_> {
     fn to_string(&self) -> String {
         super::to_string(self)
@@ -675,9 +712,11 @@ mod tests {
         model::level::LevelLength,
         request::level::{CompletionFilter, LevelRequestType, LevelsRequest, SearchFilters},
     };
+    use crate::request::Executable;
+    use crate::request::level::LevelRequest;
 
-    #[test]
-    fn serialize_levels_request() {
+    #[tokio::test]
+    async fn serialize_levels_request() {
         let request =
             LevelsRequest::default()
                 .request_type(LevelRequestType::MostLiked)
@@ -688,12 +727,26 @@ mod tests {
                         18018958, 21373201, 22057275, 22488444, 22008823, 23144971, 17382902, 87600, 22031889, 22390740, 22243264, 21923305,
                     ]),
                 ));
+        println!("{:?}", request.execute().await.unwrap().text().await.unwrap());
 
         assert_eq!(
             super::super::to_string(request),
             "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&type=2&str=&len=2,3&diff=-&page=0&total=0&featured=1&original=0&\
              twoPlayer=1&coins=0&epic=1&star=1&completedLevels=(18018958,21373201,22057275,22488444,22008823,23144971,17382902,87600,\
              22031889,22390740,22243264,21923305)&onlyCompleted=0&uncompleted=1"
+        );
+    }
+
+    #[tokio::test]
+    async fn serialize_level_request() {
+        let request = LevelRequest::default()
+            .level_id(17448979);
+
+        println!("{:?}", request.execute().await.unwrap().text().await.unwrap());
+
+        assert_eq!(
+            super::super::to_string(request),
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&levelID=17448979&inc=0&extra=0"
         );
     }
 }

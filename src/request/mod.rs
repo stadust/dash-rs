@@ -7,6 +7,8 @@
 
 use crate::{model::GameVersion, serde::RequestSerializer};
 use serde::{Deserialize, Serialize};
+use async_trait::async_trait;
+use reqwest::{Error, Response};
 
 macro_rules! const_setter {
     ($name: ident, $field: ident, $t: ty) => {
@@ -43,6 +45,7 @@ macro_rules! const_setter {
 pub mod comment;
 pub mod level;
 pub mod user;
+pub mod account;
 
 pub const REQUEST_BASE_URL: &str = "http://www.boomlings.com/database/";
 
@@ -106,6 +109,23 @@ impl Default for BaseRequest<'static> {
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct AuthenticatedUser {
+    /// The account ID of the authenticated user
+    ///
+    /// ## GD Internals:
+    /// This field is called `accountID` in the boomlings API
+    #[serde(rename = "accountID")]
+    pub account_id: u64,
+
+    /// The encrypted password of the authenticated user, this is sensitive data as it can be used to act as a user on endpoints requiring `gjp`
+    ///
+    /// ## GD Internals:
+    /// This field is called `gjp` in the boomlings API
+    #[serde(rename = "gjp")]
+    pub password_hash: String,
+}
+
 pub(crate) fn to_string<S: Serialize>(request: S) -> String {
     let mut output = Vec::new();
     let mut serializer = RequestSerializer::new(&mut output);
@@ -113,4 +133,9 @@ pub(crate) fn to_string<S: Serialize>(request: S) -> String {
     request.serialize(&mut serializer).unwrap();
 
     String::from_utf8(output).unwrap()
+}
+
+#[async_trait]
+pub trait Executable {
+    async fn execute(&self) -> Result<Response, Error>;
 }
