@@ -1,7 +1,7 @@
 //! Module containing the deserializer for robtop's indexed data format
 
 use super::error::Error;
-use log::{trace, warn};
+use log::trace;
 use serde::{
     de,
     de::{DeserializeSeed, Visitor},
@@ -321,7 +321,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
         // the visitor. Because idk what we really wanna do here otherwise
         let token = self.consume_token();
 
-        warn!("Ignored token {:?}. Maybe some index is unmapped?", token);
+        trace!("Ignored token {:?}. Maybe some index is unmapped?", token);
 
         visitor.visit_none()
     }
