@@ -51,7 +51,7 @@ impl<'a> LoginRequest<'a> {
 
     pub fn default() -> Self {
         LoginRequest{
-            udid: "199095",
+            udid: "100000",
             user_name: "",
             password: "",
             secret: super::ACCOUNT_SECRET
@@ -118,9 +118,12 @@ mod tests {
     #[tokio::test]
     async fn serialize_login_request() {
         let request = LoginRequest::default()
-            .user_name("Ryder")
-            .password("PASSHERE");
+            .user_name("TestUser")
+            .password("PLAIN_TEXT_PASS_HERE");
 
-        println!("{:?}", request.to_authenticated_user().await.unwrap());
+        assert_eq!(
+            request.to_string(),
+            "udid=100000&userName=TestUser&password=PLAIN_TEXT_PASS_HERE&secret=Wmfv3899gc9"
+        );
     }
 }

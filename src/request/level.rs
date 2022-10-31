@@ -730,7 +730,7 @@ mod tests {
         println!("{:?}", request.execute().await.unwrap().text().await.unwrap());
 
         assert_eq!(
-            super::super::to_string(request),
+            request.to_string(),
             "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&type=2&str=&len=2,3&diff=-&page=0&total=0&featured=1&original=0&\
              twoPlayer=1&coins=0&epic=1&star=1&completedLevels=(18018958,21373201,22057275,22488444,22008823,23144971,17382902,87600,\
              22031889,22390740,22243264,21923305)&onlyCompleted=0&uncompleted=1"
@@ -742,10 +742,8 @@ mod tests {
         let request = LevelRequest::default()
             .level_id(17448979);
 
-        println!("{:?}", request.execute().await.unwrap().text().await.unwrap());
-
         assert_eq!(
-            super::super::to_string(request),
+            request.to_string(),
             "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&levelID=17448979&inc=0&extra=0"
         );
     }

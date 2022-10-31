@@ -119,3 +119,22 @@ impl ToString for UserSearchRequest<'_> {
         super::to_string(self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::request::user::{UserRequest, UserSearchRequest};
+
+    #[test]
+    fn serialize_user_request() {
+        let request = UserRequest::new(57903);
+
+        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&targetAccountID=57903");
+    }
+
+    #[test]
+    fn test_user_searc_request() {
+        let request = UserSearchRequest::new("Ryder");
+
+        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&str=Ryder");
+    }
+}

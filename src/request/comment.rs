@@ -325,7 +325,7 @@ impl<'a> UploadCommentRequest<'a> {
         }
     }
 
-    pub fn comment(mut self, comment_content: String) -> Self {
+    pub fn comment(mut self, comment_content: &str) -> Self {
         self.comment = base64::encode_config(comment_content.as_bytes(), base64::URL_SAFE).into();
         self
     }
@@ -432,17 +432,18 @@ impl ToString for DeleteCommentRequest<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::request::comment::{LevelCommentsRequest, ProfileCommentsRequest, CommentHistoryRequest, SortMode};
-    use crate::request::Executable;
-    use crate::response::parse_get_gj_comments_response;
+    use std::borrow::Cow;
+    use crate::request::comment::{LevelCommentsRequest, ProfileCommentsRequest, CommentHistoryRequest, UploadCommentRequest, DeleteCommentRequest, SortMode};
+    use crate::request::{AuthenticatedUser};
+
+    const TEST_AUTHENTICATED_USER: AuthenticatedUser = AuthenticatedUser {
+    user_name: "TestUser",
+    account_id: 472634,
+    password_hash: Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
+};
 
     #[test]
     fn serialize_level_comments() {
-        if let Err(err) = env_logger::builder().is_test(true).try_init() {
-            // nothing to make the tests fail over
-            eprintln!("Error setting up env_logger: {:?}", err)
-        }
-
         let request = LevelCommentsRequest::new(1234).most_liked().page(2).limit(15);
 
         assert_eq!(
@@ -453,11 +454,6 @@ mod tests {
 
     #[test]
     fn serialize_profile_comments() {
-        if let Err(err) = env_logger::builder().is_test(true).try_init() {
-            // nothing to make the tests fail over
-            eprintln!("Error setting up env_logger: {:?}", err)
-        }
-
         let request = ProfileCommentsRequest::new(1710032).page(2);
 
         assert_eq!(
@@ -468,79 +464,29 @@ mod tests {
 
     #[test]
     fn serialize_comment_history() {
-        if let Err(err) = env_logger::builder().is_test(true).try_init() {
-            // nothing to make the tests fail over
-            eprintln!("Error setting up env_logger: {:?}", err)
-        }
-
         let request = CommentHistoryRequest::new(159782398)
+            .sort_mode(SortMode::Recent)
+            .page(0)
             .limit(2);
 
-        assert_eq!(super::super::to_string(request), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&mode=0&userID=159782398&count=2")
+        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&mode=0&userID=159782398&count=2")
     }
 
-    #[tokio::test]
-    async fn upload_comment() {
-        let request = crate::request::account::LoginRequest::default()
-            .user_name("Ryder")
-            .password("PASSHERE");
+    #[test]
+    fn serialize_upload_comment() {
+        let request = UploadCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632)
+            .comment("This is a test comment")
+            .percent(56)
+            .generate_chk();
 
-        let login_response = request.to_authenticated_user()
-            .await
-            .unwrap();
-
-        let comment_upload_request = crate::request::comment::UploadCommentRequest::new(login_response, 85179632)
-            .comment(String::from("More tests still ignore me"))
-            .percent(69)
-            .generate_chk()
-            .execute()
-            .await
-            .unwrap()
-            .text().await.unwrap();
-
-        println!("{:?}", comment_upload_request)
+        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&comment=VGhpcyBpcyBhIHRlc3QgY29tbWVudA==&levelID=85179632&percent=56&chk=UQsGAAEACgQBVQBaAwoGVwtSDQIEWAYOUFEAVQoIBVtWDwEHDQEJVA==")
     }
 
-    #[tokio::test]
-    async fn delete_comment() {
-        let request = crate::request::account::LoginRequest::default()
-            .user_name("Ryder")
-            .password("PASSHERE");
+    #[test]
+    fn serialize_delete_comment() {
+        let request = DeleteCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632)
+            .comment_id(7000000);
 
-        let login_response = request.to_authenticated_user()
-            .await
-            .unwrap();
-
-
-        let comment_history_request = CommentHistoryRequest::new(3713125)
-            .sort_mode(SortMode::Recent)
-            .limit(1)
-            .page(0);
-
-        let comment_history_response = comment_history_request.execute()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap();
-
-        let comment = parse_get_gj_comments_response(comment_history_response.as_str())
-            .unwrap();
-
-        let comment_id = comment.get(0).unwrap().comment_id;
-
-        println!("{}", &comment_id);
-
-        let comment_delete_request = crate::request::comment::DeleteCommentRequest::new(login_response, 85179632)
-            .comment_id(comment_id);
-
-        let comment_delete_response = comment_delete_request.execute()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap();
-
-        println!("{}", comment_delete_response)
+        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&commentID=7000000&levelID=85179632")
     }
 }

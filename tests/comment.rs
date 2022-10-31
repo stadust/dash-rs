@@ -1,4 +1,8 @@
 use dash_rs::{
+    request::{
+        AuthenticatedUser,
+        comment::{UploadCommentRequest, DeleteCommentRequest},
+    },
     model::{
         comment::{
             level::{CommentUser, LevelComment},
@@ -118,3 +122,68 @@ const PROFILE_COMMENT: ProfileComment = ProfileComment {
 
 load_save_roundtrip!(ProfileComment, PROFILE_COMMENT_DATA, PROFILE_COMMENT, "~", true);
 save_load_roundtrip!(ProfileComment, ProfileComment, PROFILE_COMMENT);
+
+#[tokio::test]
+async fn upload_comment() {
+    let request = crate::request::account::LoginRequest::default()
+        .user_name("Ryder")
+        .password("PASSHERE");
+
+    let login_response = request.to_authenticated_user()
+        .await
+        .unwrap();
+
+    let comment_upload_request = UploadCommentRequest::new(login_response, 85179632)
+        .comment("More tests still ignore me")
+        .percent(69)
+        .generate_chk()
+        .execute()
+        .await
+        .unwrap()
+        .text().await.unwrap();
+
+    println!("{:?}", comment_upload_request)
+}
+
+#[tokio::test]
+async fn delete_comment() {
+    let request = crate::request::account::LoginRequest::default()
+        .user_name("Ryder")
+        .password("PASSHERE");
+
+    let login_response = request.to_authenticated_user()
+        .await
+        .unwrap();
+
+
+    let comment_history_request = CommentHistoryRequest::new(3713125)
+        .sort_mode(SortMode::Recent)
+        .limit(1)
+        .page(0);
+
+    let comment_history_response = comment_history_request.execute()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+
+    let comment = parse_get_gj_comments_response(comment_history_response.as_str())
+        .unwrap();
+
+    let comment_id = comment.get(0).unwrap().comment_id;
+
+    println!("{}", &comment_id);
+
+    let comment_delete_request = crate::request::comment::DeleteCommentRequest::new(login_response, 85179632)
+        .comment_id(comment_id);
+
+    let comment_delete_response = comment_delete_request.execute()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+
+    println!("{}", comment_delete_response)
+}
