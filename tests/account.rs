@@ -1,20 +1,12 @@
 use dash_rs::request;
-use dash_rs::request::{BaseRequest};
-
-macro_rules! blocking_await {
-  ($e:expr) => {
-      tokio_test::block_on($e)
-  };
-}
 
 #[tokio::test]
 async fn login_gj_account_test() {
-    let base = BaseRequest::default();
-    let test = request::account::LoginRequest::with_base(base)
+    let request = request::account::LoginRequest::default()
         .user_name("Ryder")
-        .password("PASS HERE")
-        .execute()
-        .await.unwrap();
+        .password("PASS_HERE");
 
-    println!("{:?}", test)
+    let result = request.to_authenticated_user().await.unwrap();
+
+    println!("{:?}", result);
 }

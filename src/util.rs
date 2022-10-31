@@ -1,6 +1,8 @@
 //! Module containing various utility functions related to processing Geometry Dash data
 
+use std::borrow::Cow;
 use serde::Serializer;
+use sha1_smol;
 
 /// Performs RobTop's XOR en-/decoding routine on `encoded` using `key`
 ///
@@ -45,6 +47,17 @@ pub(crate) mod default_to_none {
             Ok(Some(deserialized))
         }
     }
+}
+
+pub(crate) fn sha_encrypt(content: Cow<str>) -> String {
+    let mut m = sha1_smol::Sha1::new();
+    m.update(content.as_bytes());
+    m.digest().to_string()
+}
+
+pub fn xor(s: Vec<u8>, key: &[u8]) -> Vec<u8> {
+    let mut b = key.iter().cycle();
+    s.into_iter().map(|x| x ^ b.next().unwrap()).collect()
 }
 
 pub(crate) fn false_to_empty_string<S: Serializer>(b: &bool, serializer: S) -> Result<S::Ok, S::Error> {

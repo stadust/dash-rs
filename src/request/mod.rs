@@ -5,6 +5,7 @@
 //! making/proxying requests for the boomlings servers seems rather useless to me, as they already
 //! contain a lot of boomlings-specific fields.
 
+use std::borrow::Cow;
 use crate::{model::GameVersion, serde::RequestSerializer};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
@@ -48,6 +49,10 @@ pub mod user;
 pub mod account;
 
 pub const REQUEST_BASE_URL: &str = "http://www.boomlings.com/database/";
+pub const ACCOUNT_SECRET: &str = "Wmfv3899gc9";
+
+pub const CONTENT_TYPE: &str = "Content-Type";
+pub const URL_FORM_ENCODED: &str = "application/x-www-form-urlencoded";
 
 /// A `BaseRequest` instance that has all its fields set to the
 /// same values a Geometry Dash 2.1 client would use
@@ -109,8 +114,15 @@ impl Default for BaseRequest<'static> {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct AuthenticatedUser {
+#[derive(Debug, Serialize, Default, Clone, Hash)]
+pub struct AuthenticatedUser<'a> {
+    /// The user name of the authenticated user
+    ///
+    /// ## GD Internals:
+    /// This field is called `userName` in the boomlings API
+    #[serde(rename = "userName")]
+    pub user_name: &'a str,
+
     /// The account ID of the authenticated user
     ///
     /// ## GD Internals:
@@ -123,7 +135,7 @@ pub struct AuthenticatedUser {
     /// ## GD Internals:
     /// This field is called `gjp` in the boomlings API
     #[serde(rename = "gjp")]
-    pub password_hash: String,
+    pub password_hash: Cow<'a, str>
 }
 
 pub(crate) fn to_string<S: Serialize>(request: S) -> String {

@@ -4,12 +4,13 @@ use reqwest::{Error, Response};
 use serde::{Serialize};
 
 use crate::{
-    request::{/*AuthenticatedUser,*/ REQUEST_BASE_URL}
+    util,
+    request::{REQUEST_BASE_URL}
 };
 use crate::request::AuthenticatedUser;
 
 pub const ACCOUNT_LOGIN_ENPOINT: &str = "accounts/loginGJAccount.php";
-pub const ACCOUNT_SECRET: &str = "Wmfv3899gc9";
+pub const XOR_KEY: &str = "37526";
 
 #[derive(Debug, Clone, Serialize, Hash)]
 pub struct LoginRequest<'a> {
@@ -36,6 +37,7 @@ pub struct LoginRequest<'a> {
     /// This field is called `password` in the boomlings API
     pub password: &'a str,
 
+    /// The secret token to call /database/accounts routes
     pub secret: &'a str,
 
     //// The base request data
@@ -52,7 +54,7 @@ impl<'a> LoginRequest<'a> {
             udid: "199095",
             user_name: "",
             password: "",
-            secret: ACCOUNT_SECRET
+            secret: super::ACCOUNT_SECRET
         }
     }
 
@@ -66,7 +68,7 @@ impl<'a> LoginRequest<'a> {
         reqwest_client
             .post(self.to_url())
             .body(self.to_string())
-            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header(super::CONTENT_TYPE, super::URL_FORM_ENCODED)
             .send()
             .await
     }
@@ -74,21 +76,16 @@ impl<'a> LoginRequest<'a> {
     pub async fn to_authenticated_user(&self) -> Result<AuthenticatedUser,  AuthenticationError> {
         match self.execute().await {
             Ok(login_result) => {
-
                 let response_body = login_result.text().await.unwrap();
                 if response_body.eq("-1") {
                     return Err(AuthenticationError("invalid credentials".into()))
                 }
 
                 Ok(AuthenticatedUser {
+                    user_name: self.user_name,
                     account_id: response_body.splitn(2, ",").next().unwrap().parse::<u64>().unwrap(),
-                    password_hash: base64::encode(&xor(self.password.as_bytes().to_vec(), "37526".as_bytes()))
+                    password_hash: base64::encode_config(&util::xor(self.password.as_bytes().to_vec(), XOR_KEY.as_bytes()), base64::URL_SAFE).into()
                 })
-
-                // Box::new(AuthenticatedUser{
-                //     account_id: account_id,
-                //     password_hash: password
-                // })
             }
             Err(login_error) => {
                 Err(AuthenticationError(login_error.to_string()))
@@ -96,31 +93,6 @@ impl<'a> LoginRequest<'a> {
         }
     }
 }
-
-
-fn xor(s: Vec<u8>, key: &[u8]) -> Vec<u8> {
-    let mut b = key.iter().cycle();
-    s.into_iter().map(|x| x ^ b.next().unwrap()).collect()
-}
-
-// fn robtop_encode_level_password(pw: String) -> [u8; 20] {
-//     let mut password = [b'0'; 20];
-//     password[0] = b'1';
-//
-//     let mut itoa_buf = [0u8; 6];
-//
-//     let n = itoa::write(&mut itoa_buf[..], pw).unwrap();
-//
-//     // ensure the password is padded with zeroes as needed
-//     for i in 0..n {
-//         password[7 - n + i] = itoa_buf[i];
-//     }
-//
-//     // We need to do the xor **before** we get the base64 encoded data
-//     util::cyclic_xor(&mut password[..], "37526");
-//
-//     password
-// }
 
 #[derive(Debug, Clone)]
 pub struct AuthenticationError(String);
@@ -147,7 +119,7 @@ mod tests {
     async fn serialize_login_request() {
         let request = LoginRequest::default()
             .user_name("Ryder")
-            .password("PASS HERE");
+            .password("PASSHERE");
 
         println!("{:?}", request.to_authenticated_user().await.unwrap());
     }
