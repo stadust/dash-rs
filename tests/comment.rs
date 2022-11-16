@@ -13,6 +13,9 @@ use dash_rs::{
     Base64Decoded, Thunk,
 };
 use std::borrow::Cow;
+use dash_rs::request::comment::{CommentHistoryRequest, SortMode};
+use dash_rs::request::Executable;
+use dash_rs::response::parse_get_gj_comments_response;
 
 #[macro_use]
 mod helper;
@@ -136,7 +139,6 @@ async fn upload_comment() {
     let comment_upload_request = UploadCommentRequest::new(login_response, 85179632)
         .comment("More tests still ignore me")
         .percent(69)
-        .generate_chk()
         .execute()
         .await
         .unwrap()
