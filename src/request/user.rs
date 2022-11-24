@@ -1,22 +1,29 @@
 //! Module containing request definitions for retrieving users
 
+use reqwest::Error;
 use crate::{
-    model::creator::Creator,
     request::{BaseRequest, GD_21, REQUEST_BASE_URL},
 };
 use serde::Serialize;
+use crate::model::user::profile::Profile;
+use crate::model::user::searched::SearchedUser;
+use crate::request::AuthenticatedUser;
+use crate::response::{parse_get_gj_user_info_response, parse_get_gj_users_response, ResponseError};
 
-pub const GET_USER_ENDPOINT: &str = "getGJUserInfo20";
-pub const SEARCH_USER_ENDPOINT: &str = "getGJUsers20";
+pub const GET_USER_ENDPOINT: &str = "getGJUserInfo20.php";
+pub const SEARCH_USER_ENDPOINT: &str = "getGJUsers20.php";
 
 /// Struct modelled after a request to `getGJUserInfo20.php`.
 ///
 /// In the geometry Dash API, this endpoint is used to download player profiles from the servers by
 /// their account IDs
-#[derive(Debug, Default, Clone, Copy, Serialize, Hash)]
+#[derive(Debug, Default, Clone, Serialize, Hash)]
 pub struct UserRequest<'a> {
     /// The base request data
     pub base: BaseRequest<'a>,
+
+    /// The authenticated user data
+    pub authenticated_user: Option<AuthenticatedUser<'a>>,
 
     /// The **account ID** (_not_ user ID) of the users whose data to retrieve.
     ///
@@ -26,34 +33,34 @@ pub struct UserRequest<'a> {
     pub user: u64,
 }
 
-impl UserRequest<'_> {
-    pub const fn new(user_id: u64) -> UserRequest<'static> {
+impl<'a> UserRequest<'a> {
+
+    fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, GET_USER_ENDPOINT)
+    }
+
+    pub const fn new(user_id: u64) -> UserRequest<'a> {
         UserRequest {
             base: GD_21,
+            authenticated_user: None,
             user: user_id,
         }
     }
 
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, GET_USER_ENDPOINT)
+    pub const fn with_authenticated_user(authenticated_user: AuthenticatedUser<'a>, user_id: u64) -> UserRequest<'a> {
+        UserRequest {
+            base: GD_21,
+            authenticated_user: Some(authenticated_user),
+            user: user_id,
+        }
     }
-}
 
-impl From<u64> for UserRequest<'_> {
-    fn from(user_id: u64) -> Self {
-        UserRequest::new(user_id)
+    pub async fn get_response_body(&self) -> Result<String, Error> {
+        super::execute(&self, &self.to_url()).await
     }
-}
 
-impl From<Creator<'_>> for UserRequest<'_> {
-    fn from(creator: Creator<'_>) -> Self {
-        UserRequest::from(creator.user_id)
-    }
-}
-
-impl ToString for UserRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    pub async fn into_robtop(self, response_body: &str) -> Result<Profile, ResponseError> {
+        parse_get_gj_user_info_response(response_body)
     }
 }
 
@@ -88,6 +95,11 @@ pub struct UserSearchRequest<'a> {
 }
 
 impl<'a> UserSearchRequest<'a> {
+
+    fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, SEARCH_USER_ENDPOINT)
+    }
+
     pub const fn new(search_string: &'a str) -> Self {
         UserSearchRequest {
             base: GD_21,
@@ -97,26 +109,12 @@ impl<'a> UserSearchRequest<'a> {
         }
     }
 
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, SEARCH_USER_ENDPOINT)
+    pub async fn get_response_body(&self) -> Result<String, Error> {
+        super::execute(&self, &self.to_url()).await
     }
-}
 
-impl<'a> From<&'a str> for UserSearchRequest<'a> {
-    fn from(search_string: &'a str) -> Self {
-        UserSearchRequest::new(search_string)
-    }
-}
-
-impl<'a: 'b, 'b> From<&'b Creator<'a>> for UserSearchRequest<'b> {
-    fn from(creator: &'b Creator<'a>) -> Self {
-        UserSearchRequest::from(&*creator.name)
-    }
-}
-
-impl ToString for UserSearchRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    pub async fn into_robtop(self, response_body: &str) -> Result<SearchedUser, ResponseError> {
+        parse_get_gj_users_response(response_body)
     }
 }
 
@@ -128,13 +126,19 @@ mod tests {
     fn serialize_user_request() {
         let request = UserRequest::new(57903);
 
-        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&targetAccountID=57903");
+        assert_eq!(
+            super::super::to_string(request),
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&targetAccountID=57903"
+        );
     }
 
     #[test]
-    fn test_user_searc_request() {
+    fn serialize_user_search_request() {
         let request = UserSearchRequest::new("Ryder");
 
-        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&str=Ryder");
+        assert_eq!(
+            super::super::to_string(request),
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&str=Ryder"
+        );
     }
 }

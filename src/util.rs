@@ -49,7 +49,7 @@ pub(crate) mod default_to_none {
     }
 }
 
-pub(crate) fn sha_encrypt(content: Cow<str>) -> String {
+pub(crate) fn sha_encrypt(content: &Cow<str>) -> String {
     let mut m = sha1_smol::Sha1::new();
     m.update(content.as_bytes());
     m.digest().to_string()

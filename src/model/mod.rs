@@ -68,3 +68,5 @@ impl Display for GameVersion {
         }
     }
 }
+
+pub trait RobtopForm {}

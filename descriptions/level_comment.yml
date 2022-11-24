@@ -27,7 +27,7 @@ indices:
     type: Option<u8>
     maps_to: progress
   - value: 11
-    type: u8
+    type: Option<u8>
     maps_to: mod_level
     use_into: true
   - value: 12

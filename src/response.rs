@@ -39,6 +39,9 @@ pub enum ResponseError<'a> {
 
     /// The response was not worked in the expected way (too few sections, etc.)
     UnexpectedFormat,
+
+    /// There was an error making the request to http://www.boomlings.com
+    RequestError(reqwest::Error)
 }
 
 impl Display for ResponseError<'_> {
@@ -47,6 +50,7 @@ impl Display for ResponseError<'_> {
             ResponseError::De(err) => err.fmt(f),
             ResponseError::NotFound => write!(f, "not found"),
             ResponseError::UnexpectedFormat => write!(f, "unexpected format"),
+            ResponseError::RequestError(err) => err.fmt(f)
         }
     }
 }
@@ -151,7 +155,7 @@ pub fn parse_get_gj_users_response(response: &str) -> Result<SearchedUser, Respo
     Ok(SearchedUser::from_robtop_str(section!(sections))?)
 }
 
-pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment>, ResponseError> {
+pub fn  parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment>, ResponseError> {
     if response == "-1" {
         return Err(ResponseError::NotFound)
     }

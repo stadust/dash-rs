@@ -1,6 +1,3 @@
-use reqwest::{
-    Response, Error
-};
 use crate::{
     model::{
         level::{DemonRating, LevelLength, LevelRating},
@@ -84,7 +81,7 @@ impl<'a> LevelRequest<'a> {
     /// Uses a default [`BaseRequest`], and sets the
     /// `inc` field to `true` and `extra` to `false`, as are the default
     /// values set the by the Geometry Dash Client
-    pub const fn new(level_id: u64) -> LevelRequest<'static> {
+    pub const fn new(level_id: u64) -> LevelRequest<'a> {
         LevelRequest {
             base: GD_21,
             level_id,
@@ -92,29 +89,11 @@ impl<'a> LevelRequest<'a> {
             extra: false,
         }
     }
-
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT)
-    }
 }
 
-#[async_trait]
 impl Executable for LevelRequest<'_> {
-    async fn execute(&self) -> Result<Response, Error> {
-        let reqwest_client = reqwest::Client::new();
-        println!("{}?{}", self.to_url(), self.to_string());
-        reqwest_client
-            .post(self.to_url())
-            .body(self.to_string())
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .send()
-            .await
-    }
-}
-
-impl ToString for LevelRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT)
     }
 }
 
@@ -563,10 +542,6 @@ impl<'a> LevelsRequest<'a> {
 
     const_setter!(request_type: LevelRequestType);
 
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, SEARCH_LEVEL_ENDPOINT)
-    }
-
     pub fn with_base(base: BaseRequest<'a>) -> Self {
         LevelsRequest {
             base,
@@ -618,21 +593,8 @@ impl<'a> LevelsRequest<'a> {
 
 #[async_trait]
 impl Executable for LevelsRequest<'_>{
-    async fn execute(&self) -> Result<Response, Error> {
-        let reqwest_client = reqwest::Client::new();
-        println!("{}?{}", self.to_url(), self.to_string());
-        reqwest_client
-            .post(self.to_url())
-            .body(self.to_string())
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .send()
-            .await
-    }
-}
-
-impl ToString for LevelsRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, SEARCH_LEVEL_ENDPOINT)
     }
 }
 

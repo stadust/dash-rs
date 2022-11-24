@@ -7,6 +7,5 @@ async fn login_gj_account_test() {
         .password("PASS_HERE");
 
     let result = request.to_authenticated_user().await.unwrap();
-
     println!("{:?}", result);
 }

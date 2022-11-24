@@ -1,11 +1,17 @@
 //! Module containing request structs for retrieving profile/level comments
 
 use std::borrow::Cow;
-use reqwest::{Error, Response};
-use crate::{model::level::Level, request::{BaseRequest, GD_21, REQUEST_BASE_URL, AuthenticatedUser}, util};
+use crate::{
+    model::comment::{
+        profile::ProfileComment,
+        level::LevelComment
+    },
+    request::{BaseRequest, GD_21, REQUEST_BASE_URL, AuthenticatedUser},
+    response::{ResponseError, parse_get_gj_comments_response, parse_get_gj_acccount_comments_response},
+    util
+};
 use serde::Serialize;
-use crate::request::Executable;
-use async_trait::async_trait;
+use reqwest::Error;
 
 pub const LEVEL_COMMENTS_ENDPOINT: &str = "getGJComments21.php";
 pub const PROFILE_COMMENT_ENDPOINT: &str = "getGJAccountComments20.php";
@@ -74,8 +80,7 @@ pub struct LevelCommentsRequest<'a> {
     pub level_id: u64,
 
     /// The amount of comments to retrieve. Note that while in-game this can only be set to 20 or 40
-    /// (via the "load more comments option), the API accepts any value. So you can set it to
-    /// something ridiculously high (like u32::MAX_VALUE) and retrieve all comments at once.
+    /// (via the "load more comments option), the API accepts any value. The max value for this is 100
     ///
     /// ## GD Internals:
     /// This field is called `count` in the boomlings API
@@ -90,7 +95,7 @@ impl<'a> LevelCommentsRequest<'a> {
 
     const_setter!(page: u32);
 
-    pub fn to_url(&self) -> String {
+    fn to_url(&self) -> String {
         format!("{}{}", REQUEST_BASE_URL, LEVEL_COMMENTS_ENDPOINT)
     }
 
@@ -98,7 +103,7 @@ impl<'a> LevelCommentsRequest<'a> {
         Self::with_base(GD_21, level)
     }
 
-    pub const fn with_base(base: BaseRequest<'a>, level: u64) -> Self {
+    const fn with_base(base: BaseRequest<'a>, level: u64) -> Self {
         LevelCommentsRequest {
             level_id: level,
             base,
@@ -118,23 +123,13 @@ impl<'a> LevelCommentsRequest<'a> {
         self.sort_mode = SortMode::Recent;
         self
     }
-}
 
-impl ToString for LevelCommentsRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    pub async fn get_response_body(&self) -> Result<String, Error> {
+        super::execute(&self, &self.to_url()).await
     }
-}
 
-impl From<u64> for LevelCommentsRequest<'_> {
-    fn from(level_id: u64) -> Self {
-        LevelCommentsRequest::new(level_id)
-    }
-}
-
-impl<S, U> From<Level<'_, S, U>> for LevelCommentsRequest<'_> {
-    fn from(level: Level<'_, S, U>) -> Self {
-        LevelCommentsRequest::from(level.level_id)
+    pub async fn into_robtop(self, response_body: &str) -> Result<Vec<LevelComment>, ResponseError> {
+        parse_get_gj_comments_response(response_body)
     }
 }
 
@@ -186,12 +181,15 @@ impl<'a> ProfileCommentsRequest<'a> {
             total: 0,
         }
     }
-}
 
-impl ToString for ProfileCommentsRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    pub async fn get_response_body(&self) -> Result<String, Error> {
+        super::execute(&self, &self.to_url()).await
     }
+
+    pub async fn into_robtop(self, response_body: &str) -> Result<Vec<ProfileComment>, ResponseError> {
+        parse_get_gj_acccount_comments_response(response_body)
+    }
+
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, Hash)]
@@ -236,10 +234,6 @@ impl<'a> CommentHistoryRequest<'a> {
     const_setter!(limit: u32);
     const_setter!(page: u32);
 
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, COMMENT_HISTORY_ENDPOINT)
-    }
-
     pub const fn with_base(base: BaseRequest<'a>, player: u64) -> Self {
         CommentHistoryRequest {
             player_id: player,
@@ -251,6 +245,10 @@ impl<'a> CommentHistoryRequest<'a> {
         }
     }
 
+    fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, COMMENT_HISTORY_ENDPOINT)
+    }
+
     pub const fn new(player: u64) -> Self {
         Self::with_base(GD_21, player)
     }
@@ -259,26 +257,13 @@ impl<'a> CommentHistoryRequest<'a> {
         self.sort_mode = sort_mode;
         self
     }
-}
 
-impl<'a> ToString for CommentHistoryRequest<'a> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    pub async fn get_response_body(&self) -> Result<String, Error> {
+        super::execute(&self, &self.to_url()).await
     }
-}
 
-#[async_trait]
-impl<'a> Executable for CommentHistoryRequest<'a> {
-    async fn execute(&self) -> Result<Response, Error> {
-        let reqwest_client = reqwest::Client::new();
-        println!("{:?}", self.to_string());
-        println!("{:?}", self.to_url());
-        reqwest_client
-            .post(self.to_url())
-            .body(self.to_string())
-            .header(super::CONTENT_TYPE, super::URL_FORM_ENCODED)
-            .send()
-            .await
+    pub async fn into_robtop(self, response_body: &str) -> Result<Vec<LevelComment>, ResponseError> {
+        parse_get_gj_comments_response(response_body)
     }
 }
 
@@ -310,6 +295,10 @@ impl<'a> UploadCommentRequest<'a> {
     const_setter!(level_id: u64);
     const_setter!(percent: u8);
 
+    fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, UPLOAD_COMMENT_ENDPOINT)
+    }
+
     pub fn new(authenticated_user: AuthenticatedUser<'a>, level_id: u64) -> Self {
         Self::with_base(GD_21, authenticated_user, level_id)
     }
@@ -330,39 +319,18 @@ impl<'a> UploadCommentRequest<'a> {
         self
     }
 
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, UPLOAD_COMMENT_ENDPOINT)
-    }
-
-    fn generate_chk(mut self) -> Self {
+    fn generate_chk(&mut self) -> &mut Self {
         self.chk = format!("{}{}{}{}{}{}", self.authenticated_user.user_name, self.comment, self.level_id, self.percent, 0, COMMENT_CHK_SALT)
             .into();
 
-        let xor_chk = util::xor(util::sha_encrypt(self.chk).as_bytes().to_vec(), COMMENT_XOR_CHK_KEY.as_bytes());
+        let xor_chk = util::xor(util::sha_encrypt(&self.chk).as_bytes().to_vec(), COMMENT_XOR_CHK_KEY.as_bytes());
         self.chk = base64::encode_config(xor_chk.as_slice(), base64::URL_SAFE).into();
         self
     }
-}
 
-impl ToString for UploadCommentRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
-    }
-}
-
-#[async_trait]
-impl<'a> Executable for UploadCommentRequest<'a> {
-    async fn execute(&self) -> Result<Response, Error> {
-
-        let reqwest_client = reqwest::Client::new();
-        println!("{:?}", self.to_string());
-        println!("{:?}", self.to_url());
-        reqwest_client
-            .post(self.to_url())
-            .body(self.to_string())
-            .header(super::CONTENT_TYPE, super::URL_FORM_ENCODED)
-            .send()
-            .await
+    pub async fn get_response_body(&mut self) -> Result<String, Error> {
+        self.generate_chk();
+        super::execute(&self, &self.to_url()).await
     }
 }
 
@@ -391,42 +359,25 @@ impl<'a> DeleteCommentRequest<'a> {
     const_setter!(comment_id: u64);
     const_setter!(level_id: u64);
 
-    pub fn new(authenticated_user: AuthenticatedUser<'a>, level_id: u64) -> Self {
-        Self::with_base(GD_21, authenticated_user, level_id)
+    fn to_url(&self) -> String {
+        format!("{}{}", REQUEST_BASE_URL, DELETE_COMMENT_ENDPOINT)
     }
 
-    pub const fn with_base(base: BaseRequest<'a>, authenticated_user: AuthenticatedUser<'a>, level_id: u64) -> Self {
+    pub fn new(authenticated_user: AuthenticatedUser<'a>, level_id: u64, comment_id: u64) -> Self {
+        Self::with_base(GD_21, authenticated_user, level_id, comment_id)
+    }
+
+    const fn with_base(base: BaseRequest<'a>, authenticated_user: AuthenticatedUser<'a>, level_id: u64, comment_id: u64) -> Self {
         DeleteCommentRequest {
             base,
             authenticated_user,
-            comment_id: 0,
+            comment_id,
             level_id
         }
     }
-    
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, DELETE_COMMENT_ENDPOINT)
-    }
-}
 
-#[async_trait]
-impl<'a> Executable for DeleteCommentRequest<'a> {
-    async fn execute(&self) -> Result<Response, Error> {
-        let reqwest_client = reqwest::Client::new();
-        println!("{:?}", self.to_string());
-        println!("{:?}", self.to_url());
-        reqwest_client
-            .post(self.to_url())
-            .body(self.to_string())
-            .header(super::CONTENT_TYPE, super::URL_FORM_ENCODED)
-            .send()
-            .await
-    }
-}
-
-impl ToString for DeleteCommentRequest<'_> {
-    fn to_string(&self) -> String {
-        super::to_string(self)
+    pub async fn get_response_body(&self) -> Result<String, Error> {
+        super::execute(&self, &self.to_url()).await
     }
 }
 
@@ -440,7 +391,7 @@ mod tests {
     user_name: "TestUser",
     account_id: 472634,
     password_hash: Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
-};
+    };
 
     #[test]
     fn serialize_level_comments() {
@@ -469,7 +420,10 @@ mod tests {
             .page(0)
             .limit(2);
 
-        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&mode=0&userID=159782398&count=2")
+        assert_eq!(
+            super::super::to_string(request),
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&mode=0&userID=159782398&count=2"
+        );
     }
 
     #[test]
@@ -479,14 +433,19 @@ mod tests {
             .percent(56)
             .generate_chk();
 
-        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&comment=VGhpcyBpcyBhIHRlc3QgY29tbWVudA==&levelID=85179632&percent=56&chk=UQsGAAEACgQBVQBaAwoGVwtSDQIEWAYOUFEAVQoIBVtWDwEHDQEJVA==")
+        assert_eq!(
+            super::super::to_string(request),
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&comment=VGhpcyBpcyBhIHRlc3QgY29tbWVudA==&levelID=85179632&percent=56&chk=UQsGAAEACgQBVQBaAwoGVwtSDQIEWAYOUFEAVQoIBVtWDwEHDQEJVA=="
+        );
     }
 
     #[test]
     fn serialize_delete_comment() {
-        let request = DeleteCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632)
-            .comment_id(7000000);
+        let request = DeleteCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632, 7000000);
 
-        assert_eq!(request.to_string(), "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&commentID=7000000&levelID=85179632")
+        assert_eq!(
+            super::super::to_string(request),
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&commentID=7000000&levelID=85179632"
+        );
     }
 }

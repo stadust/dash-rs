@@ -36,8 +36,8 @@ indices:
     type: u16
     maps_to: user_coins
   - value: 18
-    type: '&''src str'
-    maps_to: index_18
+    type: u8
+    maps_to: message_state
   - value: 19
     type: '&''src str'
     maps_to: index_19

@@ -1,6 +1,7 @@
 use dash_rs::{
     request::{
         AuthenticatedUser,
+        account::LoginRequest,
         comment::{UploadCommentRequest, DeleteCommentRequest},
     },
     model::{
@@ -13,8 +14,8 @@ use dash_rs::{
     Base64Decoded, Thunk,
 };
 use std::borrow::Cow;
-use dash_rs::request::comment::{CommentHistoryRequest, SortMode};
-use dash_rs::request::Executable;
+use dotenv::dotenv;
+use dash_rs::request::comment::{CommentHistoryRequest, LevelCommentsRequest, ProfileCommentsRequest, SortMode};
 use dash_rs::response::parse_get_gj_comments_response;
 
 #[macro_use]
@@ -39,7 +40,7 @@ const LEVEL_COMMENT1: LevelComment = LevelComment {
     is_flagged_spam: Some(false),
     time_since_post: Cow::Borrowed("5 days"),
     progress: Some(0),
-    mod_level: ModLevel::Elder,
+    mod_level: Some(ModLevel::Elder),
     special_color: Some(Color::Known(75, 255, 75)),
 };
 
@@ -52,7 +53,7 @@ const LEVEL_COMMENT2: LevelComment = LevelComment {
     is_flagged_spam: Some(false),
     time_since_post: Cow::Borrowed("5 days"),
     progress: Some(0),
-    mod_level: ModLevel::Elder,
+    mod_level: Some(ModLevel::Elder),
     special_color: Some(Color::Known(75, 255, 75)),
 };
 
@@ -67,7 +68,7 @@ const LEVEL_COMMENT3: LevelComment = LevelComment {
     is_flagged_spam: Some(false),
     time_since_post: Cow::Borrowed("5 days"),
     progress: Some(0),
-    mod_level: ModLevel::Normal,
+    mod_level: Some(ModLevel::Normal),
     special_color: Some(Color::Known(255, 255, 255)),
 };
 
@@ -127,31 +128,75 @@ load_save_roundtrip!(ProfileComment, PROFILE_COMMENT_DATA, PROFILE_COMMENT, "~",
 save_load_roundtrip!(ProfileComment, ProfileComment, PROFILE_COMMENT);
 
 #[tokio::test]
+async fn get_level_comments() {
+    let request = LevelCommentsRequest::new(76298358)
+        .page(0)
+        .limit(5)
+        .most_recent();
+
+    let request_body = request.get_response_body()
+        .await
+        .unwrap();
+
+    let level_comments = request.into_robtop(&request_body)
+        .await
+        .unwrap();
+
+    assert_eq!(level_comments.len(), 5);
+}
+
+
+#[tokio::test]
+async fn get_profile_comments() {
+    let request = ProfileCommentsRequest::new(57903)
+        .page(0);
+
+    let response_body = request.get_response_body()
+        .await
+        .unwrap();
+
+    let profile_comments = request.into_robtop(&response_body)
+        .await
+        .unwrap();
+
+    assert_eq!(profile_comments.len(), 2);
+}
+
+#[tokio::test]
 async fn upload_comment() {
-    let request = crate::request::account::LoginRequest::default()
-        .user_name("Ryder")
-        .password("PASSHERE");
+    dotenv::from_filename("test_env.env").expect("test_env.env file not found");
+
+    let user_name = dotenv::var("GJ_ACCOUNT_USERNAME").unwrap();
+    let password = dotenv::var("GJ_ACCOUNT_PASSWORD").unwrap();
+
+    let request = LoginRequest::default()
+        .user_name(&user_name)
+        .password(&password);
 
     let login_response = request.to_authenticated_user()
         .await
         .unwrap();
 
-    let comment_upload_request = UploadCommentRequest::new(login_response, 85179632)
+    let comment_upload_request = UploadCommentRequest::new(login_response, 76298358)
         .comment("More tests still ignore me")
         .percent(69)
-        .execute()
+        .get_response_body()
         .await
-        .unwrap()
-        .text().await.unwrap();
+        .unwrap();
 
     println!("{:?}", comment_upload_request)
 }
 
 #[tokio::test]
 async fn delete_comment() {
-    let request = crate::request::account::LoginRequest::default()
-        .user_name("Ryder")
-        .password("PASSHERE");
+    dotenv::from_filename("test_env.env").expect("test_env.env file not found");
+
+    let user_name = dotenv::var("GJ_ACCOUNT_USERNAME").unwrap();
+    let password = dotenv::var("GJ_ACCOUNT_PASSWORD").unwrap();
+
+    let request = LoginRequest::default()
+        .user_name(&user_name)
+        .password(&password);
 
     let login_response = request.to_authenticated_user()
         .await
@@ -163,27 +208,21 @@ async fn delete_comment() {
         .limit(1)
         .page(0);
 
-    let comment_history_response = comment_history_request.execute()
-        .await
-        .unwrap()
-        .text()
+    let comment_history_response = comment_history_request.get_response_body()
         .await
         .unwrap();
 
-    let comment = parse_get_gj_comments_response(comment_history_response.as_str())
+    let comment = comment_history_request.into_robtop(&comment_history_response)
+        .await
         .unwrap();
 
     let comment_id = comment.get(0).unwrap().comment_id;
 
     println!("{}", &comment_id);
 
-    let comment_delete_request = crate::request::comment::DeleteCommentRequest::new(login_response, 85179632)
-        .comment_id(comment_id);
+    let comment_delete_request = DeleteCommentRequest::new(login_response, 76298358, comment_id);
 
-    let comment_delete_response = comment_delete_request.execute()
-        .await
-        .unwrap()
-        .text()
+    let comment_delete_response = comment_delete_request.get_response_body()
         .await
         .unwrap();
 
