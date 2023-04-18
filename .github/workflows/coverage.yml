@@ -24,7 +24,12 @@ jobs:
           toolchain: stable
           override: true
           components: llvm-tools-preview
-          
+         
+      - name: print pwd
+        run: |
+          pwd
+          ls -la
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
