@@ -632,6 +632,96 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
     pub fn is_platformer(&self) -> bool {
         matches!(self.length, LevelLength::Platformer)
     }
+
+    pub fn with_data<Data2>(self, data: Data2) -> Level<'a, Data2, Song, User> {
+        Level {
+            level_data: data,
+
+            level_id: self.level_id,
+            name: self.name,
+            description: self.description,
+            version: self.version,
+            creator: self.creator,
+            difficulty: self.difficulty,
+            downloads: self.downloads,
+            main_song: self.main_song,
+            gd_version: self.gd_version,
+            likes: self.likes,
+            length: self.length,
+            stars: self.stars,
+            featured: self.featured,
+            copy_of: self.copy_of,
+            two_player: self.two_player,
+            custom_song: self.custom_song,
+            coin_amount: self.coin_amount,
+            coins_verified: self.coins_verified,
+            stars_requested: self.stars_requested,
+            is_epic: self.is_epic,
+            object_amount: self.object_amount,
+            index_46: self.index_46,
+            index_47: self.index_47,
+        }
+    }
+
+    pub fn with_custom_song<Song2>(self, custom_song: Song2) -> Level<'a, Data, Song2, User> {
+        Level {
+            custom_song,
+
+            level_id: self.level_id,
+            name: self.name,
+            description: self.description,
+            version: self.version,
+            creator: self.creator,
+            difficulty: self.difficulty,
+            downloads: self.downloads,
+            main_song: self.main_song,
+            gd_version: self.gd_version,
+            likes: self.likes,
+            length: self.length,
+            stars: self.stars,
+            featured: self.featured,
+            copy_of: self.copy_of,
+            two_player: self.two_player,
+            coin_amount: self.coin_amount,
+            coins_verified: self.coins_verified,
+            stars_requested: self.stars_requested,
+            is_epic: self.is_epic,
+            object_amount: self.object_amount,
+            index_46: self.index_46,
+            index_47: self.index_47,
+            level_data: self.level_data,
+        }
+    }
+
+    pub fn with_creator<User2>(self, creator: User2) -> Level<'a, Data, Song, User2> {
+        Level {
+            creator,
+
+            level_id: self.level_id,
+            name: self.name,
+            description: self.description,
+            version: self.version,
+            difficulty: self.difficulty,
+            downloads: self.downloads,
+            main_song: self.main_song,
+            gd_version: self.gd_version,
+            likes: self.likes,
+            length: self.length,
+            stars: self.stars,
+            featured: self.featured,
+            copy_of: self.copy_of,
+            two_player: self.two_player,
+            custom_song: self.custom_song,
+            coin_amount: self.coin_amount,
+            coins_verified: self.coins_verified,
+            stars_requested: self.stars_requested,
+            is_epic: self.is_epic,
+            object_amount: self.object_amount,
+            index_46: self.index_46,
+            index_47: self.index_47,
+            level_data: self.level_data,
+        }
+    }
 }
 
 impl<'de, Data, Song, User> GJFormat<'de> for Level<'de, Data, Song, User>
