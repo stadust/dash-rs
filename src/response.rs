@@ -42,6 +42,9 @@ pub enum ResponseError<'a> {
     /// The response was not worked in the expected way (too few sections, etc.)
     #[error("unexpected format")]
     UnexpectedFormat,
+
+    #[error("you have been IP banned by Cloudflare")]
+    IpBanned,
 }
 
 impl<'a> From<DeError<'a>> for ResponseError<'a> {
@@ -51,9 +54,7 @@ impl<'a> From<DeError<'a>> for ResponseError<'a> {
 }
 
 pub fn parse_get_gj_levels_response(response: &str) -> Result<Vec<ListedLevel>, ResponseError> {
-    if response == "-1" {
-        return Err(ResponseError::NotFound);
-    }
+    check_response_errors(response)?;
 
     let mut sections = response.split('#');
 
@@ -112,9 +113,7 @@ pub fn parse_get_gj_levels_response(response: &str) -> Result<Vec<ListedLevel>, 
 }
 
 pub fn parse_download_gj_level_response(response: &str) -> Result<Level, ResponseError> {
-    if response == "-1" {
-        return Err(ResponseError::NotFound);
-    }
+    check_response_errors(response)?;
 
     let mut sections = response.split('#');
 
@@ -122,17 +121,13 @@ pub fn parse_download_gj_level_response(response: &str) -> Result<Level, Respons
 }
 
 pub fn parse_get_gj_user_info_response(response: &str) -> Result<Profile, ResponseError> {
-    if response == "-1" {
-        return Err(ResponseError::NotFound);
-    }
+    check_response_errors(response)?;
 
     Ok(Profile::from_gj_str(response)?)
 }
 
 pub fn parse_get_gj_users_response(response: &str) -> Result<SearchedUser, ResponseError> {
-    if response == "-1" {
-        return Err(ResponseError::NotFound);
-    }
+    check_response_errors(response)?;
 
     let mut sections = response.split('#');
 
@@ -143,9 +138,7 @@ pub fn parse_get_gj_users_response(response: &str) -> Result<SearchedUser, Respo
 }
 
 pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment>, ResponseError> {
-    if response == "-1" {
-        return Err(ResponseError::NotFound);
-    }
+    check_response_errors(response)?;
 
     let mut sections = response.split('#');
 
@@ -175,9 +168,7 @@ pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment
 }
 
 pub fn parse_get_gj_acccount_comments_response(response: &str) -> Result<Vec<ProfileComment>, ResponseError> {
-    if response == "-1" {
-        return Err(ResponseError::NotFound);
-    }
+    check_response_errors(response)?;
 
     let mut sections = response.split('#');
 
@@ -185,4 +176,16 @@ pub fn parse_get_gj_acccount_comments_response(response: &str) -> Result<Vec<Pro
         .split('|')
         .map(|fragment| Ok(ProfileComment::from_gj_str(fragment)?))
         .collect()
+}
+
+fn check_response_errors(response: &str) -> Result<(), ResponseError> {
+    if response == "-1" {
+        return Err(ResponseError::NotFound)
+    }
+
+    if response == "error code: 1005" {
+        return Err(ResponseError::IpBanned)
+    }
+
+    Ok(())
 }
