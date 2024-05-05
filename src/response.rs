@@ -180,11 +180,11 @@ pub fn parse_get_gj_acccount_comments_response(response: &str) -> Result<Vec<Pro
 
 fn check_response_errors(response: &str) -> Result<(), ResponseError> {
     if response == "-1" {
-        return Err(ResponseError::NotFound)
+        return Err(ResponseError::NotFound);
     }
 
     if response == "error code: 1005" {
-        return Err(ResponseError::IpBanned)
+        return Err(ResponseError::IpBanned);
     }
 
     Ok(())
