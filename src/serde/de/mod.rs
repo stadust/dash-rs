@@ -2,5 +2,13 @@
 //!
 //! All of these deserializers have the goal to use zero-allocations for maximum efficiency
 
+use crate::serde::IndexedDeserializer;
+use serde::{
+    de::{MapAccess, Visitor},
+    Deserializer,
+};
+use std::{collections::HashMap, fmt::Formatter};
+
 pub mod error;
 pub mod indexed;
+pub mod plist;
