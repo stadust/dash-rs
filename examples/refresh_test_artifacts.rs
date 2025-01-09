@@ -71,7 +71,7 @@ async fn refresh_listed_levels(artifacts_path: &PathBuf, http_client: &Client) {
     let levels_to_dowload = vec![
         72540,    // demon world, 1.3 (?) level
         11774780, // dark realm , 1.9 level
-        23298409, // duelo maestro, 2.0 level
+        24904605, // The Badland, 2.0 level
         63355989, // fantasy, 2.1 level
         97598449, // Loco Motive, 2.2 platformer level
     ];

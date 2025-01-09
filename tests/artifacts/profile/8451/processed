@@ -1,7 +1,7 @@
 {
   "name": "stardust1971",
   "user_id": 2073761,
-  "stars": 13728,
+  "stars": 13791,
   "demons": 483,
   "creator_points": 19,
   "primary_color": {
@@ -20,7 +20,7 @@
   },
   "secret_coins": 151,
   "account_id": 8451,
-  "user_coins": 498,
+  "user_coins": 499,
   "index_18": "0",
   "index_19": "0",
   "youtube_url": "stardust19710",
@@ -32,7 +32,7 @@
   "robot_index": 10,
   "has_glow": true,
   "index_29": "1",
-  "global_rank": 8073,
+  "global_rank": 13731,
   "index_31": "0",
   "index_38": null,
   "index_39": null,
@@ -40,12 +40,12 @@
   "spider_index": 2,
   "twitter_url": "stadust1971",
   "twitch_url": null,
-  "diamonds": 2359,
+  "diamonds": 2621,
   "death_effect_index": 13,
   "mod_level": "None",
   "index_50": "0",
   "index_51": "63",
-  "moons": 11,
+  "moons": 16,
   "swing_index": 3,
   "jetpack_index": 1
 }
