@@ -1,5 +1,4 @@
 use crate::serde::ser::error::Error;
-use dtoa::Float;
 use itoa::{Buffer, Integer};
 use serde::{
     ser::{Error as _, Impossible, SerializeStruct},
@@ -49,15 +48,14 @@ where
         Ok(())
     }
 
-    fn append_float<F: Float>(&mut self, float: F) -> Result<(), Error> {
+    fn append_display<D: Display>(&mut self, val: D) -> Result<(), Error> {
         if self.is_start {
             self.is_start = false;
         } else {
             self.writer.write_all(self.delimiter)?;
         }
 
-        let mut buffer = dtoa::Buffer::new();
-        self.writer.write(buffer.format(float).as_bytes()).map_err(Error::custom)?;
+        write!(&mut self.writer, "{}", val).map_err(Error::custom)?;
 
         Ok(())
     }
@@ -121,12 +119,20 @@ impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
         self.append_integer(v)
     }
 
+    // Why we do not use dtoa or ryu here: Those libraries append an unneeded
+    // '.0' suffix for floating point numbers that represent integers. Robtop's
+    // formatting does not do this, and we'd like to match RobTop formatting
+    // as closely as possible (if only so that roundtrip tests do not need
+    // to deal with a myriad of exceptions). 
+    // Therefore, use the standard library, despite it being up to 4x slower
+    // at printing floats. This is serialization, so performance is less of a 
+    // concern.
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        self.append_float(v)
+        self.append_display(v)
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        self.append_float(v)
+        self.append_display(v)
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {

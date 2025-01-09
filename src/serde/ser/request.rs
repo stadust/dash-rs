@@ -13,7 +13,6 @@
 //!   investigated) TODO GAME SPECIFIC
 
 use crate::serde::SerError as Error;
-use dtoa::Float;
 use itoa::{Buffer, Integer};
 use serde::{
     ser::{Error as _, Impossible, SerializeStruct},
@@ -206,14 +205,10 @@ impl<'ser, W: Write> ValueSerializer<'ser, W> {
         Ok(())
     }
 
-    fn write_float<F: Float>(&mut self, float: F) -> Result<(), Error> {
+    fn write_display<D: Display>(&mut self, val: D) -> Result<(), Error> {
         self.write_key()?;
 
-        let mut buffer = dtoa::Buffer::new();
-        self.serializer
-            .writer
-            .write(buffer.format(float).as_bytes())
-            .map_err(Error::custom)?;
+        write!(&mut self.serializer.writer, "{}", val).map_err(Error::custom)?;
 
         Ok(())
     }
@@ -275,11 +270,11 @@ impl<'ser, 'a, W: Write> Serializer for &'a mut ValueSerializer<'ser, W> {
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        self.write_float(v)
+        self.write_display(v)
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        self.write_float(v)
+        self.write_display(v)
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
