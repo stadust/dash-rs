@@ -1,4 +1,8 @@
-use base64::{engine::general_purpose::URL_SAFE, DecodeError, DecodeSliceError, Engine};
+use base64::{
+    alphabet::URL_SAFE,
+    engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
+    DecodeError, DecodeSliceError, Engine,
+};
 use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
 use serde::{ser::Error as _, Deserialize, Serialize, Serializer};
 use std::{
@@ -212,6 +216,19 @@ impl ThunkProcessor for PercentDecoder {
     }
 }
 
+/// Base64 decoder configuration that most closely matches what Geometry Dash is doing.
+///
+/// That generally means "be as lenient as possible", aka
+/// - Do not care whether padding characters ('=') are present at the end of the base64 encoded string
+/// - Do not care if the base64 encoded string is obviously truncated (and try to simply decode as much as you can)
+pub const ROBTOP_BASE64_CONFIG: GeneralPurpose = GeneralPurpose::new(
+    &URL_SAFE,
+    GeneralPurposeConfig::new()
+        .with_encode_padding(true)
+        .with_decode_padding_mode(DecodePaddingMode::Indifferent)
+        .with_decode_allow_trailing_bits(true),
+);
+
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone, Copy)]
 pub struct Base64Decoder;
 
@@ -220,14 +237,14 @@ impl ThunkProcessor for Base64Decoder {
     type Output<'a> = Cow<'a, str>;
 
     fn from_unprocessed(unprocessed: Cow<str>) -> Result<Self::Output<'_>, Self::Error> {
-        let vec = URL_SAFE.decode(&*unprocessed)?;
+        let vec = ROBTOP_BASE64_CONFIG.decode(&*unprocessed)?;
         let string = String::from_utf8(vec).map_err(ProcessError::FromUtf8)?;
 
         Ok(Cow::Owned(string))
     }
 
     fn as_unprocessed<'b>(processed: &'b Self::Output<'_>) -> Result<Cow<'b, str>, Self::Error> {
-        Ok(Cow::Owned(URL_SAFE.encode(&**processed)))
+        Ok(Cow::Owned(ROBTOP_BASE64_CONFIG.encode(&**processed)))
     }
 
     fn downcast_output_lifetime<'b: 'c, 'c, 's>(output: &'s Self::Output<'b>) -> &'s Self::Output<'c> {
