@@ -254,3 +254,19 @@ impl<'a, W: Write> SerializeStruct for &'a mut IndexedSerializer<W> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde::Serializer;
+
+    use super::IndexedSerializer;
+
+    // Test that documents a robtop quirk: Floats without decimal part are represented as integer
+    #[test]
+    fn serialize_float_without_decimal_part_serializes_as_integer() {
+        let mut buffer = Vec::new();
+        let mut serializer = IndexedSerializer::new(":", &mut buffer, false);
+        serializer.serialize_f64(11.0f64).unwrap();
+        assert_eq!("11", std::str::from_utf8(buffer.as_slice()).unwrap());
+    }
+}
