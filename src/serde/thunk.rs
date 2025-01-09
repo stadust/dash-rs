@@ -251,3 +251,19 @@ impl ThunkProcessor for Base64Decoder {
         output
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use std::borrow::Cow;
+
+    use super::{Base64Decoder, ThunkProcessor};
+
+    #[test]
+    fn test_base64_decoder_accepts_truncated_inputs() {
+        let truncated_description = Base64Decoder::from_unprocessed(Cow::Borrowed("Tml2ZWwgZGUgMiBqdWdhZG9yZXMgcXVlIHB1ZWRlcyBjb21wbGV0YXIgc29sbyBvIGNvbiB1biBhbWlnbyAoZXMgbWVub3MgY29tcGxpY2FkbykuIEVsIG5pdmVsIHlhIG5vIHR")).unwrap();
+        assert_eq!(
+            truncated_description,
+            "Nivel de 2 jugadores que puedes completar solo o con un amigo (es menos complicado). El nivel ya no t"
+        );
+    }
+}
