@@ -84,7 +84,10 @@ macro_rules! into_conversion {
     ($for:ty, $proxy_type:ty) => {
         impl $crate::serde::InternalProxy for $for {
             type DeserializeProxy = $proxy_type;
-            type SerializeProxy<'a> = $proxy_type where Self: 'a;
+            type SerializeProxy<'a>
+                = $proxy_type
+            where
+                Self: 'a;
 
             fn to_serialize_proxy(&self) -> $proxy_type {
                 (*self).into()
@@ -106,7 +109,10 @@ macro_rules! dash_rs_newtype {
 
         impl<'a> $crate::serde::InternalProxy for $name<'a> {
             type DeserializeProxy = &'a str;
-            type SerializeProxy<'b> = &'b str where Self: 'b;
+            type SerializeProxy<'b>
+                = &'b str
+            where
+                Self: 'b;
 
             fn to_serialize_proxy(&self) -> &str {
                 use std::borrow::Borrow;

@@ -123,9 +123,9 @@ impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
     // '.0' suffix for floating point numbers that represent integers. Robtop's
     // formatting does not do this, and we'd like to match RobTop formatting
     // as closely as possible (if only so that roundtrip tests do not need
-    // to deal with a myriad of exceptions). 
+    // to deal with a myriad of exceptions).
     // Therefore, use the standard library, despite it being up to 4x slower
-    // at printing floats. This is serialization, so performance is less of a 
+    // at printing floats. This is serialization, so performance is less of a
     // concern.
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
         self.append_display(v)

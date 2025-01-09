@@ -322,7 +322,8 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
 
 impl InternalProxy for LevelLength {
     type DeserializeProxy = i32;
-    type SerializeProxy<'a> = i32
+    type SerializeProxy<'a>
+        = i32
     where
         Self: 'a;
 

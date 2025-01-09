@@ -87,7 +87,10 @@ identity_conversion!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, is
 
 impl<'b, T: ToOwned + ?Sized + 'static> InternalProxy for Cow<'b, T> {
     type DeserializeProxy = &'b T;
-    type SerializeProxy<'a> = &'a T where Self: 'a;
+    type SerializeProxy<'a>
+        = &'a T
+    where
+        Self: 'a;
 
     fn to_serialize_proxy(&self) -> Self::SerializeProxy<'_> {
         self.as_ref()
@@ -100,7 +103,10 @@ impl<'b, T: ToOwned + ?Sized + 'static> InternalProxy for Cow<'b, T> {
 
 impl<'b, T: ThunkProcessor> InternalProxy for Thunk<'b, T> {
     type DeserializeProxy = &'b str;
-    type SerializeProxy<'a> = Cow<'a, str> where Self: 'a;
+    type SerializeProxy<'a>
+        = Cow<'a, str>
+    where
+        Self: 'a;
 
     fn to_serialize_proxy(&self) -> Self::SerializeProxy<'_> {
         self.as_unprocessed().unwrap()
@@ -113,7 +119,10 @@ impl<'b, T: ThunkProcessor> InternalProxy for Thunk<'b, T> {
 
 impl<T: InternalProxy> InternalProxy for Option<T> {
     type DeserializeProxy = Option<T::DeserializeProxy>;
-    type SerializeProxy<'a> = Option<T::SerializeProxy<'a>> where Self: 'a;
+    type SerializeProxy<'a>
+        = Option<T::SerializeProxy<'a>>
+    where
+        Self: 'a;
 
     fn to_serialize_proxy(&self) -> Self::SerializeProxy<'_> {
         self.as_ref().map(|t| t.to_serialize_proxy())
