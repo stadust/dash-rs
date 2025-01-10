@@ -44,7 +44,13 @@ pub mod comment;
 pub mod level;
 pub mod user;
 
-pub const REQUEST_BASE_URL: &str = "https://www.boomlings.com/database/";
+pub fn get_gdps_url() -> String {
+    println!("ok1");
+    println!("{}",std::env::var("GDPS_URL").unwrap_or("https://www.boomlings.com/database/".to_string()).to_string());
+    std::env::var("GDPS_URL").unwrap_or("https://www.boomlings.com/database/".to_string())
+}
+
+//pub const REQUEST_BASE_URL: &str = "https://www.boomlings.com/database/";
 
 /// A `BaseRequest` instance that has all its fields set to the
 /// same values a Geometry Dash 2.1 client would use
@@ -99,7 +105,7 @@ pub struct BaseRequest<'a> {
 
 impl BaseRequest<'_> {
     /// Constructs a new `BaseRequest` with the given values.
-    pub const fn new(game_version: GameVersion, binary_version: GameVersion, secret: &'static str) -> BaseRequest<'_> {
+    pub const fn new(game_version: GameVersion, binary_version: GameVersion, secret: &'static str) -> BaseRequest<'static> {
         BaseRequest {
             game_version,
             binary_version,

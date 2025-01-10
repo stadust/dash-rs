@@ -2,7 +2,7 @@
 
 use crate::{
     model::creator::Creator,
-    request::{BaseRequest, GD_22, REQUEST_BASE_URL},
+    request::{BaseRequest, GD_22, get_gdps_url},
 };
 use serde::Serialize;
 
@@ -35,7 +35,9 @@ impl UserRequest<'_> {
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, GET_USER_ENDPOINT)
+        let request_base_url = get_gdps_url();
+        println!("hi");
+        format!("{}{}", get_gdps_url(), GET_USER_ENDPOINT)
     }
 }
 
@@ -98,7 +100,8 @@ impl<'a> UserSearchRequest<'a> {
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, SEARCH_USER_ENDPOINT)
+        let request_base_url = get_gdps_url();
+        format!("{}{}", request_base_url, SEARCH_USER_ENDPOINT)
     }
 }
 

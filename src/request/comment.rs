@@ -2,7 +2,7 @@
 
 use crate::{
     model::level::Level,
-    request::{BaseRequest, GD_22, REQUEST_BASE_URL},
+    request::{BaseRequest, GD_22, get_gdps_url},
 };
 use serde::Serialize;
 
@@ -84,7 +84,8 @@ impl<'a> LevelCommentsRequest<'a> {
     const_setter!(page: u32);
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, LEVEL_COMMENTS_ENDPOINT)
+        let request_base_url = get_gdps_url();
+        format!("{}{}", request_base_url, LEVEL_COMMENTS_ENDPOINT)
     }
 
     pub const fn new(level: u64) -> Self {
@@ -164,7 +165,8 @@ impl<'a> ProfileCommentsRequest<'a> {
     const_setter!(account_id: u64);
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, PROFILE_COMMENT_ENDPOINT)
+        let request_base_url = get_gdps_url();
+        format!("{}{}", request_base_url, PROFILE_COMMENT_ENDPOINT)
     }
 
     pub const fn new(account: u64) -> Self {
