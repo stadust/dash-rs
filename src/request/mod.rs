@@ -1,9 +1,12 @@
-//! Module containing all structs modelling requests to the boomlings APIs.
+//! Module containing all structs modelling requests to the Boomlings APIs.
 //!
 //! These directly implement (de)serialization into RobTop's data format, unlike models where
 //! RobTop's eccentricities are hidden. This is since directly re-using these structs outside of
-//! making/proxying requests for the boomlings servers seems rather useless to me, as they already
-//! contain a lot of boomlings-specific fields.
+//! making/proxying requests for the Boomlings servers seems rather useless to me, as they already
+//! contain a lot of Boomlings-specific fields.
+//! This can also be edited for a specific GDPS, e.g 1.9 GDPS. (hi absowute :3)
+
+use std::sync::OnceLock;
 
 use crate::{model::GameVersion, serde::RequestSerializer};
 use serde::{Deserialize, Serialize};
@@ -44,7 +47,13 @@ pub mod comment;
 pub mod level;
 pub mod user;
 
-pub const REQUEST_BASE_URL: &str = "https://www.boomlings.com/database/";
+pub static GD_SERVER_ENDPOINT_BASE_URL: OnceLock<&'static str> = OnceLock::new();
+
+pub fn endpoint_base_url() -> &'static str {
+    GD_SERVER_ENDPOINT_BASE_URL.get_or_init(|| BOOMLINGS_ENDPOINTS_BASE)
+}
+
+pub const BOOMLINGS_ENDPOINTS_BASE: &str = "https://www.boomlings.com/database/";
 
 /// A `BaseRequest` instance that has all its fields set to the
 /// same values a Geometry Dash 2.1 client would use
@@ -65,41 +74,41 @@ pub const GD_22: BaseRequest = BaseRequest::new(
 /// Base data included in every request made
 ///
 /// The fields in this struct are only relevant when making a request to the
-/// `boomlings` servers. When using GDCF with a custom Geometry Dash API, they
+/// `Boomlings` servers. When using GDCF with a custom Geometry Dash API, they
 /// can safely be ignored.
 #[derive(Debug, Clone, Hash, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BaseRequest<'a> {
     /// The version of the game client we're pretending to be
     ///
     /// ## GD Internals:
-    /// This field is called `gameVersion` in the boomlings API and needs to be
-    /// converted to a string response
+    /// This field is called `gameVersion` in the Boomlings API and needs to
+    /// be converted to a string response.
     /// The value of this field doesn't matter, and the request will succeed
-    /// regardless of what it's been set to
+    /// regardless of what it's been set to.
     #[serde(rename = "gameVersion")]
     pub game_version: GameVersion,
 
     /// Internal version of the game client we're pretending to be
     ///
     /// ## GD Internals:
-    /// This field is called `binaryVersion` in the boomlings API and needs to
-    /// be converted to a string
+    /// This field is called `binaryVersion` in the Boomlings API and needs to
+    /// be converted to a string.
     ///
     /// The value of this field doesn't matter, and the request will succeed
-    /// regardless of what it's been set to
+    /// regardless of what it's been set to.
     #[serde(rename = "binaryVersion")]
     pub binary_version: GameVersion,
 
-    /// The current secret String the server uses to identify valid clients.
+    /// The current secret string the server uses to identify valid clients.
     ///
     /// ## GD Internals:
-    /// Settings this field to an incorrect value will cause the request to fail
+    /// Setting this field to an incorrect value will cause the request to fail.
     pub secret: &'a str,
 }
 
 impl BaseRequest<'_> {
-    /// Constructs a new `BaseRequest` with the given values.
-    pub const fn new(game_version: GameVersion, binary_version: GameVersion, secret: &'static str) -> BaseRequest<'_> {
+    /// This constructs a new BaseRequest. It also uses the given values. :3
+    pub const fn new(game_version: GameVersion, binary_version: GameVersion, secret: &'static str) -> BaseRequest<'static> {
         BaseRequest {
             game_version,
             binary_version,
@@ -122,3 +131,5 @@ pub(crate) fn to_string<S: Serialize>(request: S) -> String {
 
     String::from_utf8(output).unwrap()
 }
+
+
