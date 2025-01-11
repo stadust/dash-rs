@@ -13,7 +13,7 @@ use once_cell::sync::OnceCell;
 static REQUEST_BASE: OnceLock<&'static str> = OnceLock::new();
 
 pub fn get_gdps_url() -> String {
-    GDPS_URL.get_or_init(|| std::env::var("GDPS_URL").unwrap_or_else(|_| "https://www.boomlings.com/database/".to_string()))
+    GDPS_URL.get_or_init(|| BOOMLINGS_REQUEST_BASE)
 }
 
 pub const GD_21: BaseRequest = BaseRequest::new(
