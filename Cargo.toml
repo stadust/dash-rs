@@ -19,6 +19,7 @@ flate2 = {version = "1.0.14", features = ["zlib"], default-features=false}
 variant_partial_eq = { git = "https://github.com/stadust/variant-partial-eq" }
 thiserror = "1.0.51"
 dash-rs-derive = { path = "dash-rs-derive" }
+quick-xml = "0.28.2"
 
 [dev-dependencies]
 # benchmark
