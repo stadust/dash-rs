@@ -10,7 +10,7 @@ use crate::{model::GameVersion, serde::RequestSerializer};
 use serde::{Deserialize, Serialize};
 use once_cell::sync::OnceCell;
 
-static GDPS_URL: OnceCell<String> = OnceCell::new();
+static REQUEST_BASE: OnceLock<&'static str> = OnceLock::new();
 
 pub fn get_gdps_url() -> String {
     GDPS_URL.get_or_init(|| std::env::var("GDPS_URL").unwrap_or_else(|_| "https://www.boomlings.com/database/".to_string()))
