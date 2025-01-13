@@ -7,10 +7,14 @@
 
 The project is a collaboration with [mgostIH](https://github.com/mgostIH), on whose idea the initial library design is based on and who continues to provide incredibly helpful insights into optimization, Geometry Dash and Rust.
 
-## Guide
-If you are planning to use this for your own demonlist that isn't related to the main Geometry Dash servers, you can use:
-`rust
-GDPS_URL.get_or_init(|| "https://your-custom-gdps-url.com".to_string());`
+## Using With a Custom GDPS
+If you are planning to use this library to interact with a GDPS, you can use:
+
+```rust
+GDPS_URL.get_or_init(|| "https://your-custom-gdps-url.com".to_string());
+```
+
+Insert this anywhere before the first call to any `dash-rs` function.
 
 ## Goals
 

@@ -10,9 +10,45 @@ use crate::{model::GameVersion, serde::RequestSerializer};
 use serde::{Deserialize, Serialize};
 use once_cell::sync::OnceCell;
 
-static GDPS_URL: OnceCell<String> = OnceCell::new();
+pub mod comment;
+pub mod level;
+pub mod user;
 
-pub fn get_gdps_url() -> String {
+macro_rules! const_setter {
+    ($name: ident, $field: ident, $t: ty) => {
+        pub const fn $name(mut self, $field: $t) -> Self {
+            self.$field = $field;
+            self
+        }
+    };
+
+    ($name: ident, $t: ty) => {
+        pub const fn $name(mut self, arg0: $t) -> Self {
+            self.$name = arg0;
+            self
+        }
+    };
+
+    ($(#[$attr:meta])* $name: ident: $t: ty) => {
+        $(#[$attr])*
+        pub const fn $name(mut self, $name: $t) -> Self {
+            self.$name = $name;
+            self
+        }
+    };
+
+    ($(#[$attr:meta])* $field:ident[$name: ident]: $t: ty) => {
+        $(#[$attr])*
+        pub const fn $name(mut self, $field: $t) -> Self {
+            self.$field = $field;
+            self
+        }
+    }
+}
+
+pub static REQUEST_BASE: OnceLock<&'static str> = OnceLock::new();
+
+pub fn base_request_url() -> String {
     GDPS_URL.get_or_init(|| BOOMLINGS_REQUEST_BASE.to_string())
 }
 
@@ -95,34 +131,4 @@ pub(crate) fn to_string<S: Serialize>(request: S) -> String {
     String::from_utf8(output).unwrap()
 }
 
-macro_rules! const_setter {
-    ($name: ident, $field: ident, $t: ty) => {
-        pub const fn $name(mut self, $field: $t) -> Self {
-            self.$field = $field;
-            self
-        }
-    };
 
-    ($name: ident, $t: ty) => {
-        pub const fn $name(mut self, arg0: $t) -> Self {
-            self.$name = arg0;
-            self
-        }
-    };
-
-    ($(#[$attr:meta])* $name: ident: $t: ty) => {
-        $(#[$attr])*
-        pub const fn $name(mut self, $name: $t) -> Self {
-            self.$name = $name;
-            self
-        }
-    };
-
-    ($(#[$attr:meta])* $field:ident[$name: ident]: $t: ty) => {
-        $(#[$attr])*
-        pub const fn $name(mut self, $field: $t) -> Self {
-            self.$field = $field;
-            self
-        }
-    }
-}
