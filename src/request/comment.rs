@@ -2,7 +2,7 @@
 
 use crate::{
     model::level::Level,
-    request::{BaseRequest, GD_22, endpoint_base_url},
+    request::{endpoint_base_url, BaseRequest, GD_22},
 };
 use serde::Serialize;
 

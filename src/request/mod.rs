@@ -131,5 +131,3 @@ pub(crate) fn to_string<S: Serialize>(request: S) -> String {
 
     String::from_utf8(output).unwrap()
 }
-
-

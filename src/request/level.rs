@@ -3,7 +3,7 @@ use crate::{
         level::{DemonRating, LevelLength, LevelRating},
         song::MainSong,
     },
-    request::{BaseRequest, GD_22, endpoint_base_url},
+    request::{endpoint_base_url, BaseRequest, GD_22},
 };
 use serde::{Deserialize, Serialize, Serializer};
 
