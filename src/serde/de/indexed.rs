@@ -1,13 +1,30 @@
 //! Module containing the deserializer for robtop's indexed data format
 
 use super::error::Error;
-use log::trace;
 use serde::{
     de,
     de::{DeserializeSeed, Visitor},
     Deserializer,
 };
 use std::str::Split;
+
+// Special versions of the trace and debug macros used in this module that are statically disabled
+// in release mode. We do not want to explicitly pass "release_max_level_off" feature to log because
+// we're in a library crate, and since features are additive, that would turn off release mode
+// logging in every crate that depends on dash-rs.
+macro_rules! dev_trace {
+    ($($t:tt)*) => {
+        #[cfg(dash_rs_dev_debug)]
+        log::trace!($($t)*)
+    };
+}
+
+macro_rules! dev_debug {
+    ($($t:tt)*) => {
+        #[cfg(dash_rs_dev_debug)]
+        log::debug!($($t)*)
+    };
+}
 
 /// Deserializer for RobTop's indexed data format
 ///
@@ -18,10 +35,10 @@ use std::str::Split;
 /// There are two variants of this format:
 ///
 /// * **Map-like**: Every second field is an key, which is almost always an integer. This key is
-/// unique and tells us which field follows.
+///   unique and tells us which field follows.
 /// * **List-like**: There are no keys, identification of
-/// fields has to occur based on the how many-th field they are. In this case the deserializer
-/// generates artificial indices (which just count up by 1 for each field) for error messages.
+///   fields has to occur based on the how many-th field they are. In this case the deserializer
+///   generates artificial indices (which just count up by 1 for each field) for error messages.
 #[derive(Debug)]
 pub struct IndexedDeserializer<'de> {
     map_like: bool,
@@ -40,7 +57,7 @@ impl<'de> IndexedDeserializer<'de> {
     /// * *map_like*: Whether the input is in map-like format or not (meaning it is in list-like
     ///   format)
     pub fn new(source: &'de str, delimiter: &'static str, map_like: bool) -> Self {
-        trace!("Deserializing {} with delimiter '{}', maplike {}", source, delimiter, map_like);
+        dev_trace!("Deserializing {} with delimiter '{}', maplike {}", source, delimiter, map_like);
 
         IndexedDeserializer {
             splitter: source.split(delimiter),
@@ -60,7 +77,7 @@ impl<'de> IndexedDeserializer<'de> {
         let tok = self.splitter.next()?;
         self.end_of_current_token = tok.as_ptr() as usize + tok.len();
 
-        trace!("Splitting off token {}, remaining input: {}", tok, &self.input[self.position()..]);
+        dev_trace!("Splitting off token {}, remaining input: {}", tok, &self.input[self.position()..]);
 
         Some(tok)
     }
@@ -70,7 +87,7 @@ impl<'de> IndexedDeserializer<'de> {
     }
 
     fn nth_last(&self, nth: usize) -> Option<&'de str> {
-        self.input[..self.position()].rsplit(self.delimiter).skip(nth - 1).next()
+        self.input[..self.position()].rsplit(self.delimiter).nth(nth - 1)
     }
 
     fn is_next_empty(&self) -> bool {
@@ -90,7 +107,7 @@ macro_rules! delegate_to_from_str {
         {
             let token = self.consume_token();
 
-            trace!(
+            dev_trace!(
                 "RobtopDeserializer::{} called called on {:?}",
                 stringify!($deserialize_method),
                 token
@@ -100,18 +117,17 @@ macro_rules! delegate_to_from_str {
 
             match token.parse() {
                 Ok(parsed) => visitor.$visitor_method(parsed),
-                Err(error) =>
-                    Err(Error::Custom {
-                        message: error.to_string(),
-                        index: None,
-                        value: Some(token),
-                    }),
+                Err(error) => Err(Error::Custom {
+                    message: error.to_string(),
+                    index: None,
+                    value: Some(token),
+                }),
             }
         }
     };
 }
 
-impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
+impl<'de> Deserializer<'de> for &mut IndexedDeserializer<'de> {
     type Error = Error<'de>;
 
     delegate_to_from_str!(deserialize_i8, visit_i8);
@@ -148,7 +164,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
     {
         let token = self.consume_token();
 
-        trace!("RobtopDeserializer::deserialize_bool called on {:?}", token);
+        dev_trace!("RobtopDeserializer::deserialize_bool called on {:?}", token);
 
         // Alright so robtop's encoding of boolean is the most inconsistent shit ever. The possible values
         // for `false` are "0" or the empty string. The possible values for `true` are 1, 2 or 10. While
@@ -159,12 +175,11 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
         match token {
             Some("0") | Some("") | None => visitor.visit_bool(false),
             Some("1") | Some("2") | Some("10") => visitor.visit_bool(true),
-            Some(value) =>
-                Err(Error::Custom {
-                    message: "Expected 0, 1, 2, 10 or the empty string".to_owned(),
-                    index: None,
-                    value: Some(value),
-                }),
+            Some(value) => Err(Error::Custom {
+                message: "Expected 0, 1, 2, 10 or the empty string".to_owned(),
+                index: None,
+                value: Some(value),
+            }),
         }
     }
 
@@ -181,7 +196,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
     {
         let token = self.consume_token();
 
-        trace!("RobtopDeserializer::deserialize_str called on {:?}", token);
+        dev_trace!("RobtopDeserializer::deserialize_str called on {:?}", token);
 
         visitor.visit_borrowed_str(token.ok_or(Error::Eof)?)
     }
@@ -192,7 +207,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
     {
         let token = self.consume_token();
 
-        trace!("RobtopDeserializer::deserialize_string called on {:?}", token);
+        dev_trace!("RobtopDeserializer::deserialize_string called on {:?}", token);
 
         visitor.visit_borrowed_str(token.ok_or(Error::Eof)?)
     }
@@ -216,13 +231,13 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
         V: Visitor<'de>,
     {
         if self.is_eof() || self.is_next_empty() {
-            trace!("RobtopDeserializer::deserialize_option called on empty string or EOF");
+            dev_trace!("RobtopDeserializer::deserialize_option called on empty string or EOF");
 
             let _ = self.consume_token(); // potentially skip the empty string. Explicitly ignore the return value in case we have Error::Eof
 
             visitor.visit_none()
         } else {
-            trace!("RobtopDeserializer::deserialize_option called 'Some(_)')");
+            dev_trace!("RobtopDeserializer::deserialize_option called 'Some(_)')");
 
             visitor.visit_some(self)
         }
@@ -306,7 +321,7 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        trace!("RobtopDeserializer::deserialize_identifier called");
+        dev_trace!("RobtopDeserializer::deserialize_identifier called");
 
         self.deserialize_str(visitor)
     }
@@ -319,9 +334,13 @@ impl<'a, 'de> Deserializer<'de> for &'a mut IndexedDeserializer<'de> {
         // indices. By the time this is called, they key itself will already have been popped in our
         // `MapAccess` implementation. This means we need to skip exactly one item! We'll feed a `None` to
         // the visitor. Because idk what we really wanna do here otherwise
-        let token = self.consume_token();
+        let _token = self.consume_token();
 
-        trace!("Ignored token {:?}. Maybe some index is unmapped?", token);
+        dev_debug!(
+            "Ignored token {:?}. Preceding token (potentially an unmapped index) was {:?}",
+            _token,
+            self.nth_last(1)
+        );
 
         visitor.visit_none()
     }
@@ -347,16 +366,15 @@ impl<'a, 'de> de::SeqAccess<'de> for SeqAccess<'a, 'de> {
     {
         self.index += 1;
 
-        trace!("Deserializing list entry at index {}", self.index);
+        dev_trace!("Deserializing list entry at index {}", self.index);
 
         match seed.deserialize(&mut *self.deserializer) {
             Err(Error::Eof) => Ok(None),
-            Err(Error::Custom { message, value, .. }) =>
-                Err(Error::Custom {
-                    message,
-                    value: value.or_else(|| self.deserializer.nth_last(1)),
-                    index: Some(INDICES.get(self.index - 1).unwrap_or(&">=51")),
-                }),
+            Err(Error::Custom { message, value, .. }) => Err(Error::Custom {
+                message,
+                value: value.or_else(|| self.deserializer.nth_last(1)),
+                index: Some(INDICES.get(self.index - 1).unwrap_or(&">=51")),
+            }),
             Err(err) => Err(err),
             Ok(item) => Ok(Some(item)),
         }
@@ -374,16 +392,15 @@ impl<'a, 'de> de::MapAccess<'de> for MapAccess<'a, 'de> {
     where
         K: DeserializeSeed<'de>,
     {
-        trace!("Processing a map key");
+        dev_trace!("Processing a map key");
 
         match seed.deserialize(&mut *self.deserializer) {
             Err(Error::Eof) => Ok(None),
-            Err(Error::Custom { message, .. }) =>
-                Err(Error::Custom {
-                    message,
-                    value: None,
-                    index: self.deserializer.nth_last(1),
-                }),
+            Err(Error::Custom { message, .. }) => Err(Error::Custom {
+                message,
+                value: None,
+                index: self.deserializer.nth_last(1),
+            }),
             Err(err) => Err(err),
             Ok(item) => Ok(Some(item)),
         }
@@ -393,16 +410,57 @@ impl<'a, 'de> de::MapAccess<'de> for MapAccess<'a, 'de> {
     where
         V: DeserializeSeed<'de>,
     {
-        trace!("Processing a map value",);
+        dev_trace!("Processing a map value");
 
         match seed.deserialize(&mut *self.deserializer) {
-            Err(Error::Custom { message, value, .. }) =>
-                Err(Error::Custom {
-                    message,
-                    value: value.or_else(|| self.deserializer.nth_last(1)),
-                    index: self.deserializer.nth_last(2),
-                }),
+            Err(Error::Custom { message, value, .. }) => Err(Error::Custom {
+                message,
+                value: value.or_else(|| self.deserializer.nth_last(1)),
+                index: self.deserializer.nth_last(2),
+            }),
             r => r,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::serde::IndexedDeserializer;
+    use serde::de::Deserialize;
+    use std::collections::HashMap;
+
+    const INPUT: &str = "1:hello:2:world";
+
+    #[test]
+    fn test_deserialize_map_like_to_hashmap() {
+        // Illustrates how to deserialize some arbitrary RobTop string into a HashMap, for easier analysis.
+        let mut deserializer = IndexedDeserializer::new(INPUT, ":", true);
+
+        let map = HashMap::<&str, &str>::deserialize(&mut deserializer).unwrap();
+
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.get("1"), Some(&"hello"));
+        assert_eq!(map.get("2"), Some(&"world"));
+    }
+
+    #[test]
+    fn test_deserialize_map_like_last_empty() {
+        // Illustrates how to deserialize some arbitrary RobTop string into a HashMap, for easier analysis.
+        let mut deserializer = IndexedDeserializer::new("1:hello:2:", ":", true);
+
+        let map = HashMap::<&str, &str>::deserialize(&mut deserializer).unwrap();
+
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.get("1"), Some(&"hello"));
+        assert_eq!(map.get("2"), Some(&""));
+    }
+
+    #[test]
+    fn test_deserialize_to_vec() {
+        let mut deserializer = IndexedDeserializer::new(INPUT, ":", false);
+
+        let vec = Vec::<&str>::deserialize(&mut deserializer).unwrap();
+
+        assert_eq!(vec, INPUT.split(':').collect::<Vec<_>>())
     }
 }

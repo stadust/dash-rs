@@ -1,74 +1,11 @@
-use crate::serde::{PercentDecoded, ProcessError, Thunk};
+use crate::serde::{GJFormat, PercentDecoder, ProcessError, Thunk};
+use dash_rs_derive::Dash;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     fmt::{Display, Formatter},
 };
-
-mod internal {
-    use crate::model::song::NewgroundsSong;
-
-    #[allow(non_upper_case_globals, unused_imports)]
-    const _newgrounds_song: () = {
-        use crate::{
-            serde::{DeError, HasRobtopFormat, IndexedDeserializer, IndexedSerializer, PercentDecoded, SerError, Thunk, RefThunk, Base64Decoded},
-        };
-        use serde::{Deserialize, Serialize};
-        use std::{borrow::{Cow, Borrow}, io::Write};
-        #[derive(Serialize, Deserialize)]
-        struct InternalNewgroundsSong<'src, 'bor> {
-            #[serde(rename = "1")]
-            index_1: u64,
-            #[serde(borrow)]
-            #[serde(rename = "2")]
-            index_2: &'src str,
-            #[serde(rename = "3")]
-            index_3: u64,
-            #[serde(rename = "4")]
-            index_4: &'src str,
-            #[serde(rename = "5")]
-            index_5: f64,
-            #[serde(rename = "6")]
-            index_6: Option<&'src str>,
-            #[serde(rename = "7")]
-            index_7: Option<&'src str>,
-            #[serde(rename = "8")]
-            index_8: &'src str,
-            #[serde(rename = "10")]
-            index_10: RefThunk<'src, 'bor, PercentDecoded<'src>>,
-        }
-        impl<'src> HasRobtopFormat<'src> for NewgroundsSong<'src> {
-            fn from_robtop_str(input: &'src str) -> Result<Self, DeError> {
-                let internal = InternalNewgroundsSong::deserialize(&mut IndexedDeserializer::new(input, "~|~", true))?;
-                Ok(Self {
-                    song_id: internal.index_1,
-                    name: Cow::Borrowed(internal.index_2),
-                    index_3: internal.index_3,
-                    artist: Cow::Borrowed(internal.index_4),
-                    filesize: internal.index_5,
-                    index_6: internal.index_6.map(Cow::Borrowed),
-                    index_7: internal.index_7.map(Cow::Borrowed),
-                    index_8: Cow::Borrowed(internal.index_8),
-                    link: Thunk::Unprocessed(match internal.index_10 {RefThunk::Unprocessed(unproc) => unproc, _ => unreachable!() }),
-                })
-            }
-            fn write_robtop_data<W: Write>(&self, writer: W) -> Result<(), SerError> {
-                let internal = InternalNewgroundsSong {
-                    index_1: self.song_id,
-                    index_2: self.name.as_ref(),
-                    index_3: self.index_3,
-                    index_4: self.artist.as_ref(),
-                    index_5: self.filesize,
-                    index_6: self.index_6.as_deref(),
-                    index_7: self.index_7.as_deref(),
-                    index_8: self.index_8.as_ref(),
-                    index_10: self.link.as_ref_thunk(),
-                };
-                internal.serialize(&mut IndexedSerializer::new("~|~", writer, true))
-            }
-        }
-    };
-}
+use variant_partial_eq::VariantPartialEq;
 
 /// Struct modelling a [`NewgroundsSong`]
 ///
@@ -78,54 +15,45 @@ mod internal {
 ///
 /// ### Unused indices:
 /// The following indices aren't used by the Geometry Dash servers: `9`
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, VariantPartialEq, Serialize, Deserialize, Clone, Dash)]
 pub struct NewgroundsSong<'a> {
     /// The newgrounds id of this [`NewgroundsSong`]
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `1`
+    #[dash(index = 1)]
     pub song_id: u64,
 
     /// The name of this [`NewgroundsSong`]
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `2`
+    #[dash(index = 2)]
     pub name: Cow<'a, str>,
 
-    /// ## GD Internals
-    /// This value is provided at index `3`
+    #[dash(index = 3)]
     pub index_3: u64,
 
     /// The artist of this [`NewgroundsSong`]
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `4`
+    #[dash(index = 4)]
     pub artist: Cow<'a, str>,
 
     /// The filesize of this [`NewgroundsSong`], in megabytes
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `5`
+    #[dash(index = 5)]
     pub filesize: f64,
 
-    /// ## GD Internals
-    /// This value is provided at index `6`
+    #[dash(index = 6)]
     pub index_6: Option<Cow<'a, str>>,
 
-    /// ## GD Internals
-    /// This value is provided at index `7`
+    #[dash(index = 7)]
     pub index_7: Option<Cow<'a, str>>,
 
-    /// ## GD Internals
-    /// This value is provided at index `8>`
+    #[dash(index = 8)]
     pub index_8: Cow<'a, str>,
 
     /// The direct `audio.ngfiles.com` download link for this [`NewgroundsSong`]
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `10`, and is percent encoded.
     #[serde(borrow)]
-    pub link: Thunk<'a, PercentDecoded<'a>>,
+    #[dash(index = 10)]
+    pub link: Thunk<'a, PercentDecoder>,
+}
+
+impl<'de> GJFormat<'de> for NewgroundsSong<'de> {
+    const DELIMITER: &'static str = "~|~";
+    const MAP_LIKE: bool = true;
 }
 
 impl<'a> NewgroundsSong<'a> {
@@ -139,7 +67,7 @@ impl<'a> NewgroundsSong<'a> {
             index_6: self.index_6.map(|cow| Cow::Owned(cow.into_owned())),
             index_7: self.index_7.map(|cow| Cow::Owned(cow.into_owned())),
             index_8: Cow::Owned(self.index_8.into_owned()),
-            link: Thunk::Processed(PercentDecoded(Cow::Owned(self.link.into_processed()?.0.into_owned()))),
+            link: Thunk::Processed(Cow::Owned(self.link.into_processed()?.into_owned())),
         })
     }
 }
@@ -149,14 +77,16 @@ impl<'a> NewgroundsSong<'a> {
 /// This data is not provided by the API and needs to be manually kept up to
 /// date
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[serde(from = "u8")]
+#[serde(into = "u8")]
 pub struct MainSong {
     /// The ID of this [`MainSong`]
     pub main_song_id: u8,
 
     /// The name of this [`MainSong`]
-    #[serde(skip)]
     // even though we (de)serialize using From and Into, we have to mark these as skip so that the 'de lifetime isn't constrained by
     // 'static
+    #[serde(skip)]
     pub name: &'static str,
 
     /// The artist of this [`MainSong`]
@@ -175,7 +105,7 @@ impl MainSong {
 }
 
 /// All current [`MainSong`]s, as of Geometry Dash 2.1
-pub const MAIN_SONGS: [MainSong; 21] = [
+pub const MAIN_SONGS: [MainSong; 22] = [
     MainSong::new(0, "Stereo Madness", "ForeverBound"),
     MainSong::new(1, "Back on Track", "DJVI"),
     MainSong::new(2, "Polargeist", "Step"),
@@ -197,6 +127,7 @@ pub const MAIN_SONGS: [MainSong; 21] = [
     MainSong::new(18, "Geometrical Dominator", "Waterflame"),
     MainSong::new(19, "Deadlocked", "F-777"),
     MainSong::new(20, "Fingerdash", "MDK"),
+    MainSong::new(21, "Geomtry Dash", "MDK"),
 ];
 
 /// Placeholder value for unknown [`MainSong`]s

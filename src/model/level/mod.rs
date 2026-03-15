@@ -1,19 +1,36 @@
 //! Module containing structs modelling Geometry Dash levels as they are returned from the Boomlings
 //! servers
 
-use base64::URL_SAFE;
-use serde::{
-    Deserialize, Deserializer, Serialize, Serializer,
-    de::Error
-};
+use itoa::Buffer;
 use std::{
+    borrow::Cow,
     fmt::{Display, Formatter},
+    io::Read,
 };
+use thiserror::Error;
+use variant_partial_eq::VariantPartialEq;
+
+use base64::{engine::general_purpose::URL_SAFE, Engine};
+use flate2::read::{GzDecoder, GzEncoder, ZlibDecoder};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 use crate::{
-    util, SerError,
-    model::level::local_level::Objects,
-    serde::{Internal, ProcessError},
+    model::{
+        creator::Creator,
+        level::{
+            metadata::LevelMetadata,
+            object::{speed::Speed, LevelObject, ObjectData},
+        },
+        song::{MainSong, NewgroundsSong},
+        GameVersion,
+    },
+    serde::{Base64Decoder, ProcessError, Thunk, ThunkProcessor},
+    util, Dash, GJFormat, SerError,
 };
+use flate2::Compression;
+use crate::model::level::local_level::LevelMetadata;
+// use flate2::read::GzDecoder;
+// use std::io::Read;
 
 mod internal;
 pub mod local_level;
@@ -62,40 +79,12 @@ pub enum LevelLength {
     /// responses
     ExtraLong,
 
-    /// Platformer, referred to as `Plat.` in game
+    /// Platformer levels (referred to as "Plat." on the level overview screens)
     ///
     /// ## GD Internals:
     /// This variant is represented by the value `5` in both requests and
     /// responses
     Platformer,
-}
-
-impl From<u8> for LevelLength {
-    fn from(i: u8) -> Self {
-        match i {
-            0 => LevelLength::Tiny,
-            1 => LevelLength::Short,
-            2 => LevelLength::Medium,
-            3 => LevelLength::Long,
-            4 => LevelLength::ExtraLong,
-            5 => LevelLength::Platformer,
-            _ => LevelLength::Unknown(i)
-        }
-    }
-}
-
-impl From<LevelLength> for u8 {
-    fn from(length: LevelLength) -> Self {
-        match length {
-            LevelLength::Tiny => 0,
-            LevelLength::Short => 1,
-            LevelLength::Medium => 2,
-            LevelLength::Long => 3,
-            LevelLength::ExtraLong => 4,
-            LevelLength::Platformer => 5,
-            LevelLength::Unknown(inner) => inner
-        }
-    }
 }
 
 /// Enum representing the possible level ratings
@@ -208,7 +197,7 @@ impl From<LevelRating> for i8 {
 pub enum DemonRating {
     /// Enum variant that's used by the [`From<i32>`](From) impl for when an
     /// unrecognized value is passed
-    Unknown(i8),
+    Unknown(i32),
 
     /// Easy demon
     ///
@@ -246,8 +235,8 @@ pub enum DemonRating {
     Extreme,
 }
 
-impl From<i8> for DemonRating{
-    fn from(i: i8) -> Self {
+impl From<i32> for DemonRating{
+    fn from(i: i32) -> Self {
         match i {
             10 => DemonRating::Easy,
             20 => DemonRating::Medium,
@@ -259,7 +248,7 @@ impl From<i8> for DemonRating{
     }
 }
 
-impl From<DemonRating> for i8{
+impl From<DemonRating> for i32{
     fn from(rating: DemonRating) -> Self {
         match rating {
             DemonRating::Easy => 10,
@@ -320,6 +309,8 @@ impl From<Featured> for i32 {
     }
 }
 
+crate::into_conversion!(Featured, i32);
+
 /// Enum representing a level's copyability status
 // FIXME: Find a sane implementation for (de)serialize here
 #[derive(Debug, Clone, Eq, PartialEq, Copy)]
@@ -352,6 +343,7 @@ pub enum Password {
     /// * XOR the resulting string with the key `"26364"` (note that the XOR operation is performed
     ///   using the ASCII value of the characters in that string)
     /// * base64 encode the result of that
+    ///
     /// In-Game, passwords are sometimes left-padded with zeros. However, this is not a requirement
     /// for the game to be able to correctly process passwords, and merely an implementation detail
     /// that changed at some point after 1.7
@@ -395,13 +387,16 @@ fn robtop_encode_level_password(pw: u32) -> [u8; 7] {
     let mut password = [b'0'; 7];
     password[0] = b'1';
 
-    let mut itoa_buf = [0u8; 6];
+    let mut itoa_buf = Buffer::new();
+    let formatted = itoa_buf.format(pw);
 
-    let n = itoa::write(&mut itoa_buf[..], pw).unwrap();
+    let n = formatted.len();
+
+    assert!(n <= 6);
 
     // ensure the password is padded with zeroes as needed
-    for i in 0..n {
-        password[7 - n + i] = itoa_buf[i];
+    for (i, b) in formatted.as_bytes().iter().enumerate() {
+        password[7 - n + i] = *b;
     }
 
     // We need to do the xor **before** we get the base64 encoded data
@@ -415,7 +410,7 @@ impl Password {
     ///
     /// ## Arguments
     /// + `raw_password_data`: The raw data returned from the servers. Assumed to be follow the
-    /// encoding described in [`Password`]'s documentation
+    ///   encoding described in [`Password`]'s documentation
     fn from_robtop(raw_password_data: &str) -> Result<Self, ProcessError> {
         Ok(match raw_password_data {
             "0" => Password::NoCopy,
@@ -423,8 +418,7 @@ impl Password {
             _ => {
                 // More than enough for storing the decoded password even if in future the format grows
                 let mut decoded_buffer = [0; 32];
-                let password_len =
-                    base64::decode_config_slice(raw_password_data, URL_SAFE, &mut decoded_buffer).map_err(ProcessError::Base64)?;
+                let password_len = URL_SAFE.decode_slice(raw_password_data, &mut decoded_buffer)?;
 
                 // This xor pass is applied after we base64 decoded the input, it's how the game tries to protect
                 // data
@@ -443,30 +437,28 @@ impl Password {
     }
 }
 
-impl Serialize for Internal<Password> {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-        where
-            S: Serializer,
-    {
-        match self.0 {
-            Password::FreeCopy => serializer.serialize_str("Aw=="),
-            Password::NoCopy => serializer.serialize_str("0"),
+impl ThunkProcessor for Password {
+    type Error = ProcessError;
+    type Output<'a> = Password;
+
+    fn from_unprocessed(unprocessed: Cow<str>) -> Result<Self, Self::Error> {
+        Password::from_robtop(&unprocessed)
+    }
+
+    fn as_unprocessed<'b>(processed: &'b Self::Output<'_>) -> Result<Cow<'b, str>, Self::Error> {
+        match *processed {
+            Password::FreeCopy => Ok(Cow::Borrowed("Aw==")),
+            Password::NoCopy => Ok(Cow::Borrowed("0")),
             Password::PasswordCopy(pw) => {
-                // serialize_bytes does the base64 encode by itself
-                serializer.serialize_bytes(&robtop_encode_level_password(pw))
+                // FIXME: its possible to avoid an allocation here by base64-encoding to a stack-buffer,
+                // and passing that stack buffer directly to a Serializer's serialize_bytes method.
+                Ok(Cow::Owned(URL_SAFE.encode(robtop_encode_level_password(pw))))
             },
         }
     }
-}
 
-impl<'de> Deserialize<'de> for Internal<Password> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-        where
-            D: Deserializer<'de>,
-    {
-        let raw_password_data = <&str>::deserialize(deserializer)?;
-
-        Password::from_robtop(raw_password_data).map(Internal).map_err(Error::custom)
+    fn downcast_output_lifetime<'b: 'c, 'c, 's>(output: &'s Self::Output<'b>) -> &'s Self::Output<'c> {
+        output
     }
 }
 
@@ -480,42 +472,536 @@ impl Display for Password {
     }
 }
 
-#[derive(Debug)]
-pub enum LevelProcessError {
-    Deserialize(String),
+pub type ListedLevel<'a> = Level<'a, (), Option<NewgroundsSong<'a>>, Option<Creator<'a>>>;
 
-    Serialize(SerError),
+/// Struct representing levels as returned by the boomlings API.
+///
+/// These can be retrieved using [`LevelRequest`](crate::request::level::LevelRequest)s or
+/// [`LevelsRequest`](crate::request::level::LevelsRequest). The `level_data` field is only set if
+/// the level was retrieved using a request of the former kind. For requests of the latter type, it
+/// will be set to [`None`]
+///
+/// ## GD Internals:
+/// The Geometry Dash servers provide lists of partial levels via the
+/// `getGJLevels` endpoint. Complete levels can be downloaded via `downloadGJLevel`
+///
+/// ### Unmapped values:
+/// + Index `8`: Index 8 is a boolean value indicating whether the level has a
+///   difficulty rating that isn't N/A. This is equivalent to checking if
+///   [`Level::difficulty`] is unequal to
+///   [`LevelRating::NotAvailable`]
+/// + Index `17`: Index 17 is a boolean value indicating whether
+///   the level is a demon level. This is equivalent to checking if
+///   [`Level::difficulty`] is the [`LevelRating::Demon`] variant.
+/// + Index `25`: Index 25 is a boolean value indicating
+///   whether the level is an auto level. This is equivalent to checking if
+///   [`Level::difficulty`] is equal to
+///   [`LevelRating::Auto`]
+/// + Index `43`: This index is an indicator of demon difficulty as follows:
+///   3 = easy demon,
+///   4 = medium demon,
+///   5 = insane demon,
+///   6 = extreme demon.
+///   In other cases it's hard demon (thanks Ryder!). However, since we extract this information from
+///   index 9, dash-rs ignores this value.
+///
+/// ### Value only provided via `downloadGJLevels`
+/// These values are not provided for by the `getGJLevels` endpoint and are
+/// thus modelled in the [`LevelData`] struct: `4`, `27`,
+/// `28`, `29`, `36`, `40`
+///
+/// ### Unused indices:
+/// The following indices aren't used by the Geometry Dash servers: `11`, `16`,
+/// `17`, `20`, `21`, `22`, `23`, `24`, `26`, `31`, `32`, `33`, `34`, `40`,
+/// `41`, `44`
+#[derive(Debug, VariantPartialEq, Serialize, Deserialize)]
+pub struct Level<'a, Data = LevelData<'a>, Song = Option<u64>, User = u64> {
+    /// The level's unique level id
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `1`.
+    pub level_id: u64,
 
-    Base64(base64::DecodeError),
+    /// The level's name
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `2`.
+    #[serde(borrow)]
+    pub name: Cow<'a, str>,
 
-    /// Unknown compression format for level data
-    UnknownCompression,
+    /// The level's description. Is [`None`] if the creator didn't put any
+    /// description.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `3` and encoded using urlsafe base 64.
+    #[variant_compare = "crate::util::option_variant_eq"]
+    pub description: Option<Thunk<'a, Base64Decoder>>,
 
-    /// Error during (de)compression
-    Compression(std::io::Error),
+    /// The [`Level`]'s version. The version get incremented every time
+    /// the level is updated, and the initial version is always version 1.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `5`.
+    pub version: u32,
 
-    /// The given level string did not contain a metadata section
-    MissingMetadata,
+    /// The ID of the level's creator
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `6`.
+    pub creator: User,
+
+    /// The difficulty of this [`Level`]
+    ///
+    /// ## GD Internals:
+    /// This value is a construct from the value at the indices `9`, `17` and
+    /// `25`, whereas index 9 is an integer representation of either the
+    /// [`LevelRating`] or the [`DemonRating`]
+    /// struct, depending on the value of index 17.
+    ///
+    /// If index 25 is set to true, the level is an auto level and the value at
+    /// index 9 is some nonsense, in which case it is ignored.
+    pub difficulty: LevelRating,
+
+    /// The amount of downloads
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `10`
+    pub downloads: u32,
+
+    /// The [`MainSong`] the level uses, if any.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `12`. Interpretation is additionally
+    /// dependant on the value at index `35` (the custom song id), as
+    /// without that information, a value of `0` for
+    /// this field could either mean the level uses `Stereo Madness` or no
+    /// main song.
+    pub main_song: Option<MainSong>,
+
+    /// The gd version the request was uploaded/last updated in.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `13`
+    pub gd_version: GameVersion,
+
+    /// The amount of likes this [`Level`] has received
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `14`
+    pub likes: i32,
+
+    /// The length of this [`Level`]
+    ///
+    /// ## GD Internals:
+    /// This value is provided as an integer representation of the
+    /// [`LevelLength`] struct at index `15`
+    pub length: LevelLength,
+
+    /// The amount of stars completion of this [`Level`] awards. In the case of a platformer level,
+    /// this is instead the number of "moons" awarded.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `18`
+    pub stars: u8,
+
+    /// This [`Level`]s featured state
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `19`
+    pub featured: Featured,
+
+    /// The ID of the level this [`Level`] is a copy of, or [`None`], if
+    /// this [`Level`] isn't a copy.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `30`
+    pub copy_of: Option<u64>,
+
+    /// Value indicating whether this level is played in two-player mode
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `31` and actually sanely encoded
+    pub two_player: bool,
+
+    /// The id of the newgrounds song this [`Level`] uses, or [`None`]
+    /// if it useds a main song.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `35`, and a value of `0` means, that no
+    /// custom song is used.
+    pub custom_song: Song,
+
+    /// The amount of coins in this [`Level`]
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `37`
+    pub coin_amount: u8,
+
+    /// Value indicating whether the user coins (if present) in this
+    /// [`Level`] are verified
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `38`, as an integer
+    pub coins_verified: bool,
+
+    /// The amount of stars the level creator has requested when uploading this
+    /// [`Level`], or [`None`] if no stars were requested.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `39`, and a value of `0` means no stars
+    /// were requested
+    pub stars_requested: Option<u8>,
+
+    /// Value indicating whether this [`Level`] is epic
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `42`, as an integer
+    pub is_epic: bool,
+
+    /// The amount of objects in this [`Level`]. Note that a value of `None` _does not_ mean
+    /// that there are no objects in the level, but rather that the server's didn't provide an
+    /// object count.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `45`, although only for levels uploaded
+    /// in version 2.1 or later. For all older levels this is always `None`
+    pub object_amount: Option<u32>,
+
+    /// According to the GDPS source this is always `1`, although that is
+    /// evidently wrong
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `46` and seems to be an integer
+    pub index_46: Option<Cow<'a, str>>,
+
+    /// According to the GDPS source, this is always `2`, although that is
+    /// evidently wrong
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `47` and seems to be an integer
+    pub index_47: Option<Cow<'a, str>>,
+
+    /// Additional data about this level that can be retrieved by downloading the level.
+    ///
+    /// This is [`None`] for levels retrieved via the "overview" endpoint `getGJLevels`.
+    pub level_data: Data,
 }
 
-impl Display for LevelProcessError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LevelProcessError::Deserialize(inner) => write!(f, "{}", inner),
-            LevelProcessError::Serialize(inner) => inner.fmt(f),
-            LevelProcessError::Base64(inner) => inner.fmt(f),
-            LevelProcessError::UnknownCompression => write!(f, "Unknown compression scheme"),
-            LevelProcessError::Compression(inner) => inner.fmt(f),
-            LevelProcessError::MissingMetadata => write!(f, "Missing metadata section in level string"),
+impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
+    /// Returns `true` iff this level is a platformer level
+    pub fn is_platformer(&self) -> bool {
+        matches!(self.length, LevelLength::Platformer)
+    }
+
+    pub fn with_data<Data2>(self, data: Data2) -> Level<'a, Data2, Song, User> {
+        Level {
+            level_data: data,
+
+            level_id: self.level_id,
+            name: self.name,
+            description: self.description,
+            version: self.version,
+            creator: self.creator,
+            difficulty: self.difficulty,
+            downloads: self.downloads,
+            main_song: self.main_song,
+            gd_version: self.gd_version,
+            likes: self.likes,
+            length: self.length,
+            stars: self.stars,
+            featured: self.featured,
+            copy_of: self.copy_of,
+            two_player: self.two_player,
+            custom_song: self.custom_song,
+            coin_amount: self.coin_amount,
+            coins_verified: self.coins_verified,
+            stars_requested: self.stars_requested,
+            is_epic: self.is_epic,
+            object_amount: self.object_amount,
+            index_46: self.index_46,
+            index_47: self.index_47,
+        }
+    }
+
+    pub fn with_custom_song<Song2>(self, custom_song: Song2) -> Level<'a, Data, Song2, User> {
+        Level {
+            custom_song,
+
+            level_id: self.level_id,
+            name: self.name,
+            description: self.description,
+            version: self.version,
+            creator: self.creator,
+            difficulty: self.difficulty,
+            downloads: self.downloads,
+            main_song: self.main_song,
+            gd_version: self.gd_version,
+            likes: self.likes,
+            length: self.length,
+            stars: self.stars,
+            featured: self.featured,
+            copy_of: self.copy_of,
+            two_player: self.two_player,
+            coin_amount: self.coin_amount,
+            coins_verified: self.coins_verified,
+            stars_requested: self.stars_requested,
+            is_epic: self.is_epic,
+            object_amount: self.object_amount,
+            index_46: self.index_46,
+            index_47: self.index_47,
+            level_data: self.level_data,
+        }
+    }
+
+    pub fn with_creator<User2>(self, creator: User2) -> Level<'a, Data, Song, User2> {
+        Level {
+            creator,
+
+            level_id: self.level_id,
+            name: self.name,
+            description: self.description,
+            version: self.version,
+            difficulty: self.difficulty,
+            downloads: self.downloads,
+            main_song: self.main_song,
+            gd_version: self.gd_version,
+            likes: self.likes,
+            length: self.length,
+            stars: self.stars,
+            featured: self.featured,
+            copy_of: self.copy_of,
+            two_player: self.two_player,
+            custom_song: self.custom_song,
+            coin_amount: self.coin_amount,
+            coins_verified: self.coins_verified,
+            stars_requested: self.stars_requested,
+            is_epic: self.is_epic,
+            object_amount: self.object_amount,
+            index_46: self.index_46,
+            index_47: self.index_47,
+            level_data: self.level_data,
         }
     }
 }
 
-impl<'a> std::error::Error for LevelProcessError {}
+impl<'de, Data, Song, User> GJFormat<'de> for Level<'de, Data, Song, User>
+where
+    Level<'de, Data, Song, User>: Dash<'de>,
+{
+    const DELIMITER: &'static str = ":";
+    const MAP_LIKE: bool = true;
+}
+
+/// Struct encapsulating the additional level data returned when actually downloading a level
+#[derive(Debug, VariantPartialEq, Serialize, Deserialize)]
+pub struct LevelData<'a> {
+    /// The level's actual data.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `4`, and is urlsafe base64 encoded and `DEFLATE` compressed
+    #[serde(borrow)]
+    pub level_data: Thunk<'a, Objects>,
+
+    /// The level's password
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `27`. For encoding details, see the documentation on the
+    /// [`Password`] variants
+    pub password: Thunk<'a, Password>,
+
+    /// The time passed since the `Level` was uploaded, as a string. Note that these strings are
+    /// very imprecise, as they are only of the form "x months ago", or similar.
+    ///
+    /// TODO: Parse these into an enum
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `28`
+    pub time_since_upload: Cow<'a, str>,
+
+    /// The time passed since the `Level` was last updated, as a string. Note that these strings are
+    /// very imprecise, as they are only of the form "x months ago", or similar.
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `29`
+    pub time_since_update: Cow<'a, str>,
+
+    /// According to the GDPS source, this is a value called `extraString`
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `36`
+    pub index_36: Cow<'a, str>,
+
+    pub index_40: Cow<'a, str>,
+
+    pub index_52: Cow<'a, str>,
+
+    pub index_53: Cow<'a, str>,
+
+    pub index_57: Cow<'a, str>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Objects {
+    pub meta: LevelMetadata,
+    pub objects: Vec<LevelObject>,
+}
+
+#[derive(Debug, Error)]
+pub enum LevelProcessError {
+    #[error("{0}")]
+    Deserialize(String),
+
+    #[error("{0}")]
+    Serialize(#[from] SerError),
+
+    #[error("{0}")]
+    Base64(#[from] base64::DecodeError),
+
+    /// Unknown compression format for level data
+    #[error("Unknown compression scheme")]
+    UnknownCompression,
+
+    /// Error during (de)compression
+    #[error("{0}")]
+    Compression(#[from] std::io::Error),
+
+    /// The given level string did not contain a metadata section
+    #[error("Missing metadata section in level string")]
+    MissingMetadata,
+}
+
+impl ThunkProcessor for Objects {
+    type Error = LevelProcessError;
+    type Output<'a> = Objects;
+
+    fn from_unprocessed(unprocessed: Cow<str>) -> Result<Self, LevelProcessError> {
+        // Doing the entire base64 in one go is actually faster than using base64::read::DecoderReader and
+        // having the two readers go back and forth.
+        let decoded = URL_SAFE.decode(&*unprocessed)?;
+
+        // Here's the deal: Robtop decompresses all levels by calling the zlib function 'inflateInit2_' with
+        // the second argument set to 47. This basically tells zlib "this data might be compressed using
+        // zlib or gzip format, with window size at most 15, but you gotta figure it out yourself".
+        // However, flate2 doesnt expose this option, so we have to manually determine whether we
+        // have gzip or zlib compression.
+
+        let mut decompressed = String::new();
+
+        match &decoded[..2] {
+            // gz magic bytes
+            [0x1f, 0x8b] => {
+                let mut decoder = GzDecoder::new(&decoded[..]);
+
+                decoder.read_to_string(&mut decompressed)?;
+            },
+            // There's no such thing as "zlib magic bytes", but the first byte stores some information about how the data is compressed.
+            // '0x78' is the first byte for the compression method robtop used (note: this is only used for very old levels, as he switched
+            // to gz for newer levels)
+            [0x78, _] => {
+                let mut decoder = ZlibDecoder::new(&decoded[..]);
+
+                decoder.read_to_string(&mut decompressed)?;
+            },
+            _ => return Err(LevelProcessError::UnknownCompression),
+        }
+
+        let mut iter = decompressed.split_terminator(';');
+
+        let metadata_string = match iter.next() {
+            Some(meta) => meta,
+            None => return Err(LevelProcessError::MissingMetadata),
+        };
+
+        let meta = LevelMetadata::from_gj_str(metadata_string).map_err(|err| LevelProcessError::Deserialize(err.to_string()))?;
+
+        iter.map(LevelObject::from_gj_str)
+            .collect::<Result<_, _>>()
+            .map(|objects| Objects { meta, objects })
+            .map_err(|err| LevelProcessError::Deserialize(err.to_string()))
+    }
+
+    fn as_unprocessed(processed: &Objects) -> Result<Cow<str>, LevelProcessError> {
+        let mut bytes = Vec::new();
+
+        processed.meta.write_gj(&mut bytes)?;
+
+        bytes.push(b';');
+
+        for object in &processed.objects {
+            object.write_gj(&mut bytes)?;
+            bytes.push(b';');
+        }
+
+        // FIXME(game specific): Should we remember the compression scheme (zlib or gz) from above, or just
+        // always re-compress using gz? Since the game dyncamially detects the compression method, we're
+        // compatible either way.
+
+        let mut encoder = GzEncoder::new(&bytes[..], Compression::new(9)); // TODO: idk what these values mean
+        let mut compressed = Vec::new();
+
+        encoder.read_to_end(&mut compressed)?;
+
+        Ok(Cow::Owned(URL_SAFE.encode(compressed)))
+    }
+
+    fn downcast_output_lifetime<'b: 'c, 'c, 's>(output: &'s Self::Output<'b>) -> &'s Self::Output<'c> {
+        output
+    }
+}
+
+impl Objects {
+    pub fn length_in_seconds(&self) -> f32 {
+        let mut portals = Vec::new();
+        let mut furthest_x = 0.0;
+
+        for object in &self.objects {
+            if let ObjectData::SpeedPortal { checked: true, speed } = object.metadata {
+                portals.push((object.x, speed))
+            }
+
+            furthest_x = f32::max(furthest_x, object.x);
+        }
+
+        portals.sort_by(|(x1, _), (x2, _)| x1.partial_cmp(x2).unwrap());
+
+        get_seconds_from_x_pos(furthest_x, self.meta.starting_speed, &portals)
+    }
+}
+
+fn get_seconds_from_x_pos(pos: f32, start_speed: Speed, portals: &[(f32, Speed)]) -> f32 {
+    let mut speed: f32 = start_speed.into();
+
+    if portals.is_empty() {
+        return pos / speed;
+    }
+
+    let mut last_obj_pos = 0.0;
+    let mut total_time = 0.0;
+
+    for (x, portal_speed) in portals {
+        // distance between last portal and this one
+        let current_segment = x - last_obj_pos;
+
+        // break if we're past the position we want to calculate the position to
+        if pos <= current_segment {
+            break;
+        }
+
+        // Calculate time spent in this segment and add to total time
+        total_time += current_segment / speed;
+
+        speed = (*portal_speed).into();
+
+        last_obj_pos = *x;
+    }
+
+    // add the time spent between end and last portal to total time and return
+    (pos - last_obj_pos) / speed + total_time
+}
 
 #[cfg(test)]
 mod tests {
-    use base64::URL_SAFE;
+    use base64::{engine::general_purpose::URL_SAFE, Engine};
 
     use crate::model::level::{robtop_encode_level_password, Password};
 
@@ -531,7 +1017,7 @@ mod tests {
     #[test]
     fn serialize_password() {
         let encoded = robtop_encode_level_password(123456);
-        let result = base64::encode_config(&encoded, URL_SAFE);
+        let result = URL_SAFE.encode(encoded);
 
         assert_eq!(result, "AwcBBQAHAA==")
     }
@@ -542,8 +1028,8 @@ mod tests {
         // in-game code for padding is inconsistent, see above test cases
 
         // password of 'Time Pressure' by AeonAir
-        assert_eq!(base64::encode_config(&robtop_encode_level_password(3101), URL_SAFE), "AwYDBQUCBw==");
+        assert_eq!(URL_SAFE.encode(robtop_encode_level_password(3101)), "AwYDBQUCBw==");
         // password of 'Breakthrough' by Hinds1324
-        assert_eq!(base64::encode_config(&robtop_encode_level_password(0), URL_SAFE), "AwYDBgQCBg==")
+        assert_eq!(URL_SAFE.encode(robtop_encode_level_password(0)), "AwYDBgQCBg==")
     }
 }

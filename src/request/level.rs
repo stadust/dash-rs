@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize, Serializer};
 use crate::{
-    request::{BaseRequest, GD_21, REQUEST_BASE_URL},
     model::{
         level::{DemonRating, LevelLength, LevelRating},
         song::MainSong,
     },
+    request::{endpoint_base_url, BaseRequest, GD_22},
 };
+use std::borrow::Cow;
+use std::fmt::Display;
 
 pub const DOWNLOAD_LEVEL_ENDPOINT: &str = "downloadGJLevel22.php";
 pub const SEARCH_LEVEL_ENDPOINT: &str = "getGJLevels21.php";
@@ -60,7 +62,7 @@ impl<'a> LevelRequest<'a> {
 
     pub const fn new(level_id: u64) -> LevelRequest<'a> {
         LevelRequest {
-            base: GD_21,
+            base: GD_22,
             level_id,
             inc: true,
             extra: false,
@@ -68,11 +70,13 @@ impl<'a> LevelRequest<'a> {
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, DOWNLOAD_LEVEL_ENDPOINT)
+        format!("{}{}", endpoint_base_url(), DOWNLOAD_LEVEL_ENDPOINT)
     }
+}
 
-    pub fn to_string(&self) -> String {
-        super::to_string(&self)
+impl Display for LevelRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
     }
 }
 
@@ -200,6 +204,7 @@ pub struct SearchFilters {
     /// * `completedLevels` is a list of levels ids that have been completed. It needs to be
     ///   provided if, and only if, either `uncompleted` or `onlyCompleted` are set to `1`. The ids
     ///   are comma seperated and enclosed by parenthesis.
+    ///
     /// If no completion filtering is desired, both boolean fields are set to `0` and
     /// `completedLevels` is omitted.
     pub completion: CompletionFilter,
@@ -269,8 +274,8 @@ impl SearchFilters {
 /// ## GD Internals:
 /// + Unused values: `8`, `9`, `14`
 /// + The values `15` and `17` are only used in Geometry Dash World and are the
-/// same as `0` ([`LevelRequestType::Search`]) and `6` ([`LevelRequestType::Featured`]) respectively
-#[derive(Debug, Copy, Clone, PartialEq, Hash, Serialize, Deserialize)]
+///   same as `0` ([`LevelRequestType::Search`]) and `6` ([`LevelRequestType::Featured`]) respectively
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Serialize, Deserialize, Default)]
 #[serde(from = "i32", into = "i32")]
 pub enum LevelRequestType {
     /// A search request.
@@ -279,6 +284,7 @@ pub enum LevelRequestType {
     ///
     /// ## GD Internals:
     /// This variant is represented by the value `0` in requests
+    #[default]
     Search,
 
     /// Request to retrieve the list of most downloaded levels
@@ -362,12 +368,6 @@ pub enum LevelRequestType {
 
     /// Unknown variant not yet mapped by dash-rs
     Unknown(i32),
-}
-
-impl Default for LevelRequestType {
-    fn default() -> Self {
-        LevelRequestType::Search
-    }
 }
 
 impl From<i32> for LevelRequestType {
@@ -455,7 +455,7 @@ pub struct LevelsRequest<'a> {
     /// ## GD Internals:
     /// This field is called `str` in the Boomlings API
     #[serde(rename = "str")]
-    pub search_string: &'a str,
+    pub search_string: Cow<'a, str>,
 
     /// A list of level lengths to filter by
     ///
@@ -521,6 +521,10 @@ impl<'a> LevelsRequest<'a> {
 
     const_setter!(request_type: LevelRequestType);
 
+    pub fn to_url(&self) -> String {
+        format!("{}{}", endpoint_base_url(), SEARCH_LEVEL_ENDPOINT)
+    }
+
     pub fn with_base(base: BaseRequest<'a>) -> Self {
         LevelsRequest {
             base,
@@ -530,8 +534,8 @@ impl<'a> LevelsRequest<'a> {
 
     /// Turns this request into a [`LevelRequestType::Search`]-type request, with the search
     /// parameter set to the given string
-    pub const fn search(mut self, search_string: &'a str) -> Self {
-        self.search_string = search_string;
+    pub fn search(mut self, search_string: impl Into<Cow<'a, str>>) -> Self {
+        self.search_string = search_string.into();
         self.request_type = LevelRequestType::Search;
         self
     }
@@ -568,15 +572,12 @@ impl<'a> LevelsRequest<'a> {
         self.search_filters = filters;
         self
     }
+}
 
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, SEARCH_LEVEL_ENDPOINT)
+impl Display for LevelsRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
     }
-
-    pub fn to_string(&self) -> String {
-        super::to_string(&self)
-    }
-
 }
 
 /// Newtype struct for [`DemonRating`] to implement robtop's serialization for requests on
@@ -617,7 +618,7 @@ impl Serialize for LengthFilter {
             LevelLength::Medium => 2,
             LevelLength::Long => 3,
             LevelLength::ExtraLong => 4,
-            LevelLength::Platformer => 5
+            LevelLength::Platformer => 5,
         };
 
         serializer.serialize_u8(numerical_value)
@@ -672,8 +673,8 @@ mod tests {
                 ));
 
         assert_eq!(
-            request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&type=2&str=&len=2,3&diff=-&page=0&total=0&featured=1&original=0&\
+            super::super::to_string(request),
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&type=2&str=&len=2,3&diff=-&page=0&total=0&featured=1&original=0&\
              twoPlayer=1&coins=0&epic=1&star=1&completedLevels=(18018958,21373201,22057275,22488444,22008823,23144971,17382902,87600,\
              22031889,22390740,22243264,21923305)&onlyCompleted=0&uncompleted=1"
         );

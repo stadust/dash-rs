@@ -1,11 +1,11 @@
 //! Module containing request structs for retrieving profile/level comments
 
 use std::borrow::Cow;
-use crate::{
-    request::{BaseRequest, GD_21, REQUEST_BASE_URL},
-    util
-};
+use crate::{request::{endpoint_base_url, BaseRequest, GD_22}, util};
 use serde::Serialize;
+use std::fmt::Display;
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE;
 use crate::request::account::AuthenticatedUser;
 
 pub const LEVEL_COMMENTS_ENDPOINT: &str = "getGJComments21.php";
@@ -90,8 +90,12 @@ impl<'a> LevelCommentsRequest<'a> {
 
     const_setter!(page: u32);
 
+    pub fn to_url(&self) -> String {
+        format!("{}{}", endpoint_base_url(), LEVEL_COMMENTS_ENDPOINT)
+    }
+
     pub const fn new(level: u64) -> Self {
-        Self::with_base(GD_21, level)
+        Self::with_base(GD_22, level)
     }
 
     const fn with_base(base: BaseRequest<'a>, level: u64) -> Self {
@@ -114,13 +118,11 @@ impl<'a> LevelCommentsRequest<'a> {
         self.sort_mode = SortMode::Recent;
         self
     }
+}
 
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, LEVEL_COMMENTS_ENDPOINT)
-    }
-
-    pub fn to_string(&self) -> String {
-        super::to_string(&self)
+impl Display for LevelCommentsRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
     }
 }
 
@@ -156,8 +158,12 @@ impl<'a> ProfileCommentsRequest<'a> {
 
     const_setter!(account_id: u64);
 
+    pub fn to_url(&self) -> String {
+        format!("{}{}", endpoint_base_url(), PROFILE_COMMENT_ENDPOINT)
+    }
+
     pub const fn new(account: u64) -> Self {
-        Self::with_base(GD_21, account)
+        Self::with_base(GD_22, account)
     }
 
     const fn with_base(base: BaseRequest<'a>, account: u64) -> Self {
@@ -168,15 +174,6 @@ impl<'a> ProfileCommentsRequest<'a> {
             total: 0,
         }
     }
-
-    pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, PROFILE_COMMENT_ENDPOINT)
-    }
-
-    pub fn to_string(&self) -> String {
-        super::to_string(&self)
-    }
-
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, Hash)]
@@ -233,15 +230,11 @@ impl<'a> CommentHistoryRequest<'a> {
     }
 
     pub const fn new(player: u64) -> Self {
-        Self::with_base(GD_21, player)
+        Self::with_base(GD_22, player)
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, COMMENT_HISTORY_ENDPOINT)
-    }
-
-    pub fn to_string(&self) -> String {
-        super::to_string(&self)
+        format!("{}{}", endpoint_base_url(), COMMENT_HISTORY_ENDPOINT)
     }
 
     pub const fn sort_mode(mut self, sort_mode: SortMode) -> Self {
@@ -277,11 +270,11 @@ impl<'a> UploadCommentRequest<'a> {
     const_setter!(percent: u8);
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, UPLOAD_COMMENT_ENDPOINT)
+        format!("{}{}", endpoint_base_url(), UPLOAD_COMMENT_ENDPOINT)
     }
 
     pub fn new(authenticated_user: AuthenticatedUser<'a>, level_id: u64) -> Self {
-        Self::with_base(GD_21, authenticated_user, level_id)
+        Self::with_base(GD_22, authenticated_user, level_id)
     }
 
     const fn with_base(base: BaseRequest<'a>, authenticated_user: AuthenticatedUser<'a>, level_id: u64) -> Self {
@@ -295,16 +288,24 @@ impl<'a> UploadCommentRequest<'a> {
     }
 
     pub fn comment(mut self, comment_content: &str) -> Self {
-        self.comment = base64::encode_config(comment_content.as_bytes(), base64::URL_SAFE).into();
+        self.comment = URL_SAFE.encode(comment_content.as_bytes()).into();
         self
     }
 
     fn generate_chk(&self) -> Cow<'a, str> {
-        let chk: Cow<'a, str> = format!("{}{}{}{}{}{}", self.authenticated_user.user_name, self.comment, self.level_id, self.percent, 0, COMMENT_CHK_SALT)
+        let chk: Cow<'a, str> = format!(
+            "{}{}{}{}{}{}",
+            self.authenticated_user.user_name,
+            self.comment,
+            self.level_id,
+            self.percent,
+            0,
+            COMMENT_CHK_SALT
+        )
             .into();
 
         let xor_chk = util::xor(util::sha_encrypt(&chk).as_bytes().to_vec(), COMMENT_XOR_CHK_KEY.as_bytes());
-        base64::encode_config(xor_chk.as_slice(), base64::URL_SAFE).into()
+        URL_SAFE.encode(xor_chk.as_slice()).into()
     }
 
     pub fn to_string(&self) -> String {
@@ -339,7 +340,7 @@ impl<'a> DeleteCommentRequest<'a> {
     const_setter!(level_id: u64);
 
     pub fn new(authenticated_user: AuthenticatedUser<'a>, level_id: u64, comment_id: u64) -> Self {
-        Self::with_base(GD_21, authenticated_user, level_id, comment_id)
+        Self::with_base(GD_22, authenticated_user, level_id, comment_id)
     }
 
     const fn with_base(base: BaseRequest<'a>, authenticated_user: AuthenticatedUser<'a>, level_id: u64, comment_id: u64) -> Self {
@@ -352,11 +353,13 @@ impl<'a> DeleteCommentRequest<'a> {
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, DELETE_COMMENT_ENDPOINT)
+        format!("{}{}", endpoint_base_url(), DELETE_COMMENT_ENDPOINT)
     }
+}
 
-    pub fn to_string(&self) -> String {
-        super::to_string(&self)
+impl Display for ProfileCommentsRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
     }
 }
 
@@ -364,7 +367,6 @@ impl<'a> DeleteCommentRequest<'a> {
 mod tests {
     use std::borrow::Cow;
     use crate::request::comment::{LevelCommentsRequest, ProfileCommentsRequest, CommentHistoryRequest, UploadCommentRequest, DeleteCommentRequest, SortMode};
-    use crate::request::{AuthenticatedUser};
     use crate::request::account::AuthenticatedUser;
 
     const TEST_AUTHENTICATED_USER: AuthenticatedUser = AuthenticatedUser::new(
@@ -375,26 +377,41 @@ mod tests {
 
     #[test]
     fn serialize_level_comments() {
+        if let Err(err) = env_logger::builder().is_test(true).try_init() {
+            // nothing to make the tests fail over
+            eprintln!("Error setting up env_logger: {:?}", err)
+        }
+
         let request = LevelCommentsRequest::new(1234).most_liked().page(2).limit(15);
 
         assert_eq!(
-            request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=2&mode=1&levelID=1234&count=15"
+            super::super::to_string(request),
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&total=0&page=2&mode=1&levelID=1234&count=15"
         );
     }
 
     #[test]
     fn serialize_profile_comments() {
+        if let Err(err) = env_logger::builder().is_test(true).try_init() {
+            // nothing to make the tests fail over
+            eprintln!("Error setting up env_logger: {:?}", err)
+        }
+
         let request = ProfileCommentsRequest::new(1710032).page(2);
 
         assert_eq!(
-            request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=2&accountID=1710032"
+            super::super::to_string(request),
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&total=0&page=2&accountID=1710032"
         );
     }
 
     #[test]
     fn serialize_comment_history() {
+        if let Err(err) = env_logger::builder().is_test(true).try_init() {
+            // nothing to make the tests fail over
+            eprintln!("Error setting up env_logger: {:?}", err)
+        }
+
         let request = CommentHistoryRequest::new(159782398)
             .sort_mode(SortMode::Recent)
             .page(0)
@@ -408,6 +425,11 @@ mod tests {
 
     #[test]
     fn serialize_upload_comment() {
+        if let Err(err) = env_logger::builder().is_test(true).try_init() {
+            // nothing to make the tests fail over
+            eprintln!("Error setting up env_logger: {:?}", err)
+        }
+
         let request = UploadCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632)
             .comment("This is a test comment")
             .percent(56);
@@ -420,6 +442,11 @@ mod tests {
 
     #[test]
     fn serialize_delete_comment() {
+        if let Err(err) = env_logger::builder().is_test(true).try_init() {
+            // nothing to make the tests fail over
+            eprintln!("Error setting up env_logger: {:?}", err)
+        }
+
         let request = DeleteCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632, 7000000);
 
         assert_eq!(
@@ -428,3 +455,4 @@ mod tests {
         );
     }
 }
+

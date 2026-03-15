@@ -8,7 +8,7 @@
 //! * A version that's public API and which abstracts over robtop's data format in a sensible way.
 //!   These still borrow their data from the deserialization source, but can optionally own their
 //!   contents. All data that would require allocations to be completely processed (such as base64
-//!   encoded level descriptions) is put in [`Thunk`](crate::serde::thunk::Thunk)s and can be
+//!   encoded level descriptions) is put in [`Thunk`](crate::Thunk)s and can be
 //!   processed lazily on-demand. This allows us to deserialize the input and construct these
 //!   representations with zero allocations.
 //!
@@ -37,14 +37,15 @@ pub enum GameVersion {
     /// values in the form `major.minor`
     Version { minor: u8, major: u8 },
 }
+
 impl From<u8> for GameVersion {
     fn from(version: u8) -> Self {
         if version == 10 {
             GameVersion::Unknown
         } else {
             GameVersion::Version {
-                major: (version / 10) as u8,
-                minor: (version % 10) as u8,
+                major: (version / 10),
+                minor: (version % 10),
             }
         }
     }
@@ -69,4 +70,4 @@ impl Display for GameVersion {
     }
 }
 
-pub trait RobtopForm {}
+crate::into_conversion!(GameVersion, u8);

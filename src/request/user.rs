@@ -1,9 +1,12 @@
 //! Module containing request definitions for retrieving users
 
 use crate::{
-    request::{BaseRequest, GD_21, REQUEST_BASE_URL},
+    model::creator::Creator,
+    request::{endpoint_base_url, BaseRequest, GD_22},
 };
 use serde::Serialize;
+use std::borrow::Cow;
+use std::fmt::Display;
 use crate::request::account::AuthenticatedUser;
 
 pub const GET_USER_ENDPOINT: &str = "getGJUserInfo20.php";
@@ -30,10 +33,9 @@ pub struct UserRequest<'a> {
 }
 
 impl<'a> UserRequest<'a> {
-
     pub const fn new(user_id: u64) -> UserRequest<'a> {
         UserRequest {
-            base: GD_21,
+            base: GD_22,
             authenticated_user: None,
             user: user_id,
         }
@@ -41,23 +43,33 @@ impl<'a> UserRequest<'a> {
 
     pub const fn with_authenticated_user(authenticated_user: AuthenticatedUser<'a>, user_id: u64) -> UserRequest<'a> {
         UserRequest {
-            base: GD_21,
             authenticated_user: Some(authenticated_user),
+            base: GD_22,
             user: user_id,
         }
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, GET_USER_ENDPOINT)
+        format!("{}{}", endpoint_base_url(), GET_USER_ENDPOINT)
     }
 
     pub fn to_string(&self) -> String {
         super::to_string(&self)
     }
-
+}
+impl From<Creator<'_>> for UserRequest<'_> {
+    fn from(creator: Creator<'_>) -> Self {
+        UserRequest::from(creator.user_id)
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Copy, PartialEq, Eq)]
+impl Display for UserRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct UserSearchRequest<'a> {
     /// The base request data
     pub base: BaseRequest<'a>,
@@ -84,22 +96,27 @@ pub struct UserSearchRequest<'a> {
     /// ## GD Internals:
     /// This field is called `str` in the Boomlings API
     #[serde(rename = "str")]
-    pub search_string: &'a str,
+    pub search_string: Cow<'a, str>,
+}
+
+impl Display for UserSearchRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
+    }
 }
 
 impl<'a> UserSearchRequest<'a> {
-
-    pub const fn new(search_string: &'a str) -> Self {
+    pub fn new(search_string: impl Into<Cow<'a, str>>) -> Self {
         UserSearchRequest {
-            base: GD_21,
+            base: GD_22,
             total: 0,
             page: 0,
-            search_string,
+            search_string: search_string.into(),
         }
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, SEARCH_USER_ENDPOINT)
+        format!("{}{}", endpoint_base_url(), SEARCH_USER_ENDPOINT)
     }
 
     pub fn to_string(&self) -> String {

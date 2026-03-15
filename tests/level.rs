@@ -1,103 +1,63 @@
-use dash_rs::{
-    model::{
-        level::LevelLength,
-    },
-};
-use dash_rs::model::level::DemonRating::Extreme;
-use dash_rs::model::level::LevelRating::Demon;
-use dash_rs::model::level::Password::PasswordCopy;
-use dash_rs::request::level::{LevelRequest, LevelsRequest};
-use dash_rs::response::{parse_download_gj_level_response, parse_get_gj_levels_response};
+use std::path::Path;
 
-const CONTENT_TYPE: &str = "Content-Type";
-const URL_FORM_ENCODED: &str = "application/x-www-form-urlencoded";
+use dash_rs::model::level::Level;
+use framework::load_test_units;
 
-#[tokio::test]
-async fn download_gj_level_test() {
-    let client = reqwest::Client::new();
-    let request = LevelRequest::new(76298358);
+mod framework;
 
-    let raw_response = client.post(request.to_url())
-        .body(request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+enum LevelTester {}
 
-    let level = parse_download_gj_level_response(&raw_response)
-        .unwrap();
+impl framework::Testable for LevelTester {
+    type Target<'a> = Level<'a, ()>;
 
-    println!("{:?}", &level);
-
-    assert_eq!(level.name, "Edooox Collab");
-    assert_eq!(level.level_data.as_ref().unwrap().password, PasswordCopy(7678));
-    assert_eq!(level.level_data.as_ref().unwrap().editor_time.unwrap(), 432);
-
+    fn canonicalize(level: &mut Self::Target<'_>) {
+        if let Some(ref mut hunk) = level.description {
+            hunk.process().unwrap();
+        }
+    }
 }
 
-#[tokio::test]
-async fn get_gj_levels_test() {
-    let client = reqwest::Client::new();
-    let request = LevelsRequest::default()
-        .search("Spectrum Rave")
-        .page(0);
+#[test]
+fn test_listed_level() {
+    let units = load_test_units::<LevelTester>(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("artifacts")
+            .join("listed_level"),
+    );
 
-    let raw_response = client.post(request.to_url())
-        .body(request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+    for (path, unit) in units {
+        println!("Testing case {:?}", path);
 
-    let levels = parse_get_gj_levels_response(&raw_response)
-        .unwrap();
-
-    let level = levels.get(0).unwrap();
-
-    println!("{:?}", levels.get(0));
-
-    assert_eq!(level.level_id, 72308725);
-    assert_eq!(level.name, "Spectrum Rave");
-    assert_eq!(level.creator.as_ref().unwrap().name, "Ryder");
-    assert_eq!(level.main_song, None);
-    assert_eq!(level.length, LevelLength::Long);
-    assert_eq!(level.custom_song.as_ref().unwrap().song_id, 785444);
-    assert_eq!(level.has_verified_coins, false);
-    assert_eq!(level.is_epic, true);
-    assert_eq!(level.difficulty, Demon(Extreme));
-    assert_eq!(level.length, LevelLength::Long);
-    assert!(level.level_data.as_ref().is_none());
+        unit.test_consistency();
+        unit.test_load_save_roundtrip();
+        unit.test_save_load_roundtrip();
+    }
 }
 
-#[tokio::test]
-async fn get_gj_levels_should_use_main_song_test() {
-    let client = reqwest::Client::new();
-    let request = LevelsRequest::default()
-        .search("The Nightmare")
-        .page(0);
+enum FullLevelTester {}
 
-    let raw_response = client.post(request.to_url())
-        .body(request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+impl framework::Testable for FullLevelTester {
+    type Target<'a> = Level<'a>;
 
-    let levels = parse_get_gj_levels_response(&raw_response)
-        .unwrap();
+    fn canonicalize(level: &mut Self::Target<'_>) {
+        if let Some(ref mut hunk) = level.description {
+            hunk.process().unwrap();
+        }
+        level.level_data.level_data.process().unwrap();
+        level.level_data.password.process().unwrap();
+    }
+}
 
-    let level = levels.get(0).unwrap();
+#[test]
+fn test_full_level() {
+    let units = load_test_units::<FullLevelTester>(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("artifacts").join("level"));
 
-    assert_eq!(level.level_id, 13519);
-    assert_eq!(level.main_song.as_ref().unwrap().name, "Polargeist");
-    assert!(level.custom_song.as_ref().is_none());
+    for (path, unit) in units {
+        println!("Testing case {:?}", path);
+
+        unit.test_consistency();
+        // Cannot do round trip testing for onw, as the level data handling in dash-rs is incomplete
+        // (to put it nicely)
+    }
 }

@@ -1,54 +1,355 @@
-#![allow(unused_imports)]
 use crate::{
     model::{
-        level::{
-            DemonRating, Objects, Password, Featured, LevelLength, LevelRating,
-            local_level::LevelData,
-            online_level::Level,
-        },
+        level::{DemonRating, Level, LevelData, LevelLength, LevelRating},
         song::MainSong,
-        GameVersion,
     },
-    serde::{Base64Decoded, IndexedDeserializer, IndexedSerializer, Internal, RefThunk},
-    DeError, HasRobtopFormat, SerError, Thunk,
+    serde::InternalProxy,
+    Dash,
 };
-use serde::{Deserialize, Serialize};
-use std::{
-    borrow::{Borrow, Cow},
-    io::Write,
-};
+use serde::{de::Error, Deserialize, Serialize};
+use std::borrow::Borrow;
 
-mod level_length {
-    use crate::model::level::LevelLength;
-    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+#[derive(Serialize, Deserialize, Debug)]
+struct InternalLevel<'src> {
+    #[serde(rename = "1")]
+    index_1: u64,
+    #[serde(rename = "2")]
+    index_2: &'src str,
+    #[serde(rename = "3")]
+    index_3: Option<&'src str>,
+    #[serde(rename = "5")]
+    index_5: u32,
+    #[serde(rename = "6")]
+    index_6: u64,
+    #[serde(serialize_with = "crate::util::false_to_empty_string")]
+    #[serde(rename = "25")]
+    index_25: bool,
+    #[serde(serialize_with = "crate::util::true_to_ten")]
+    #[serde(rename = "8")]
+    index_8: bool,
+    #[serde(rename = "9")]
+    index_9: i32,
+    #[serde(serialize_with = "crate::util::false_to_empty_string")]
+    #[serde(rename = "17")]
+    index_17: bool,
+    #[serde(rename = "10")]
+    index_10: u32,
+    #[serde(rename = "12")]
+    index_12: u8,
+    #[serde(rename = "13")]
+    index_13: u8,
+    #[serde(rename = "14")]
+    index_14: i32,
+    #[serde(rename = "15")]
+    index_15: i32,
+    #[serde(rename = "18")]
+    index_18: u8,
+    #[serde(rename = "19")]
+    index_19: i32,
+    #[serde(with = "crate::util::default_to_none")]
+    #[serde(rename = "30")]
+    index_30: Option<u64>,
+    #[serde(rename = "31")]
+    index_31: bool,
+    #[serde(with = "crate::util::default_to_none")]
+    #[serde(rename = "35")]
+    index_35: Option<u64>,
+    #[serde(rename = "37")]
+    index_37: u8,
+    #[serde(rename = "38")]
+    index_38: bool,
+    #[serde(with = "crate::util::default_to_none")]
+    #[serde(rename = "39")]
+    index_39: Option<u8>,
+    #[serde(rename = "42")]
+    index_42: bool,
+    #[serde(rename = "43")]
+    index_43: u8,
+    #[serde(with = "crate::util::default_to_none")]
+    #[serde(rename = "45")]
+    index_45: Option<u32>,
+    #[serde(rename = "46")]
+    index_46: Option<&'src str>,
+    #[serde(rename = "47")]
+    index_47: Option<&'src str>,
 
-    // pub fn serialize<S>(to_serialize: &LevelLength, serializer: S) -> Result<S::Ok, S::Error>
-    // where
-    //     S: Serializer,
-    // {
-    //     match to_serialize {
-    //         LevelLength::Unknown(unknown) => serializer.serialize_i32(*unknown),
-    //         LevelLength::Tiny => serializer.serialize_str("0"),
-    //         LevelLength::Short => serializer.serialize_str("1"),
-    //         LevelLength::Medium => serializer.serialize_str("2"),
-    //         LevelLength::Long => serializer.serialize_str("3"),
-    //         LevelLength::ExtraLong => serializer.serialize_str("4"),
-    //     }
-    // }
-    //
-    // pub fn deserialize<'de, D>(deserializer: D) -> Result<LevelLength, D::Error>
-    // where
-    //     D: Deserializer<'de>,
-    // {
-    //     Ok(match <&str>::deserialize(deserializer)? {
-    //         "0" => LevelLength::Tiny,
-    //         "1" => LevelLength::Short,
-    //         "2" => LevelLength::Medium,
-    //         "3" => LevelLength::Long,
-    //         "4" => LevelLength::ExtraLong,
-    //         int => LevelLength::Unknown(int.parse().map_err(D::Error::custom)?),
-    //     })
-    // }
+    // Only present sometimes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "4")]
+    index_4: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "27")]
+    index_27: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "28")]
+    index_28: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "29")]
+    index_29: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "36")]
+    index_36: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "40")]
+    index_40: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "52")]
+    index_52: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "53")]
+    index_53: Option<&'src str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "57")]
+    index_57: Option<&'src str>,
+}
+
+impl<'de> Dash<'de> for Level<'de, (), Option<u64>, u64> {
+    fn dash_deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let internal = InternalLevel::deserialize(deserializer)?;
+
+        Ok(Self {
+            level_id: InternalProxy::from_deserialize_proxy(internal.index_1),
+            name: InternalProxy::from_deserialize_proxy(internal.index_2),
+            description: InternalProxy::from_deserialize_proxy(internal.index_3),
+            version: InternalProxy::from_deserialize_proxy(internal.index_5),
+            creator: InternalProxy::from_deserialize_proxy(internal.index_6),
+            downloads: InternalProxy::from_deserialize_proxy(internal.index_10),
+            gd_version: InternalProxy::from_deserialize_proxy(internal.index_13),
+            likes: InternalProxy::from_deserialize_proxy(internal.index_14),
+            length: InternalProxy::from_deserialize_proxy(internal.index_15),
+            stars: InternalProxy::from_deserialize_proxy(internal.index_18),
+            featured: InternalProxy::from_deserialize_proxy(internal.index_19),
+            copy_of: InternalProxy::from_deserialize_proxy(internal.index_30),
+            two_player: InternalProxy::from_deserialize_proxy(internal.index_31),
+            custom_song: InternalProxy::from_deserialize_proxy(internal.index_35),
+            coin_amount: InternalProxy::from_deserialize_proxy(internal.index_37),
+            coins_verified: InternalProxy::from_deserialize_proxy(internal.index_38),
+            stars_requested: InternalProxy::from_deserialize_proxy(internal.index_39),
+            is_epic: InternalProxy::from_deserialize_proxy(internal.index_42),
+            object_amount: InternalProxy::from_deserialize_proxy(internal.index_45),
+            index_46: InternalProxy::from_deserialize_proxy(internal.index_46),
+            index_47: InternalProxy::from_deserialize_proxy(internal.index_47),
+
+            main_song: if internal.index_35.is_some() {
+                None
+            } else {
+                Some(MainSong::from(internal.index_12))
+            },
+            difficulty: if !internal.index_8 {
+                LevelRating::NotAvailable
+            } else if internal.index_25 {
+                LevelRating::Auto
+            } else if internal.index_17 {
+                LevelRating::Demon(DemonRating::from_response_value(internal.index_9))
+            } else {
+                LevelRating::from_response_value(internal.index_9)
+            },
+            level_data: (),
+        })
+    }
+
+    fn dash_serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // We are in a manual impl, so we can do the .as_deref() trick to avoid needing two separate structs
+        let index_3 = self.description.to_serialize_proxy();
+
+        let internal = InternalLevel {
+            index_1: self.level_id.to_serialize_proxy(),
+            index_2: self.name.to_serialize_proxy(),
+            index_3: index_3.as_deref(),
+            index_5: self.version.to_serialize_proxy(),
+            index_6: self.creator.to_serialize_proxy(),
+            index_10: self.downloads.to_serialize_proxy(),
+            index_13: self.gd_version.to_serialize_proxy(),
+            index_14: self.likes.to_serialize_proxy(),
+            index_15: self.length.to_serialize_proxy(),
+            index_18: self.stars.to_serialize_proxy(),
+            index_19: self.featured.to_serialize_proxy(),
+            index_30: self.copy_of.to_serialize_proxy(),
+            index_31: self.two_player.to_serialize_proxy(),
+            index_35: self.custom_song.to_serialize_proxy(),
+            index_37: self.coin_amount.to_serialize_proxy(),
+            index_38: self.coins_verified.to_serialize_proxy(),
+            index_39: self.stars_requested.to_serialize_proxy(),
+            index_42: self.is_epic.to_serialize_proxy(),
+            index_45: self.object_amount.to_serialize_proxy(),
+            index_46: self.index_46.to_serialize_proxy(),
+            index_47: self.index_47.to_serialize_proxy(),
+
+            index_12: self.main_song.map(|song| song.main_song_id).unwrap_or(0),
+            index_25: self.difficulty == LevelRating::Auto,
+            index_8: self.difficulty != LevelRating::NotAvailable,
+            index_9: self.difficulty.into_response_value(),
+            index_17: self.difficulty.is_demon(),
+            index_43: match self.difficulty {
+                LevelRating::Demon(DemonRating::Easy) => 3,
+                LevelRating::Demon(DemonRating::Medium) => 4,
+                LevelRating::Demon(DemonRating::Hard) => 0,
+                LevelRating::Demon(DemonRating::Insane) => 5,
+                LevelRating::Demon(DemonRating::Extreme) => 6,
+                _ => 5,
+            },
+            index_4: None,
+            index_27: None,
+            index_28: None,
+            index_29: None,
+            index_36: None,
+            index_40: None,
+            index_52: None,
+            index_53: None,
+            index_57: None,
+        };
+        internal.serialize(serializer)
+    }
+}
+
+impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
+    fn dash_deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let internal = InternalLevel::deserialize(deserializer)?;
+
+        let level_data = match (internal.index_4, internal.index_27, internal.index_28, internal.index_29) {
+            (Some(idx4), Some(idx27), Some(idx28), Some(idx29)) => LevelData {
+                level_data: InternalProxy::from_deserialize_proxy(idx4),
+                password: InternalProxy::from_deserialize_proxy(idx27),
+                time_since_upload: InternalProxy::from_deserialize_proxy(idx28),
+                time_since_update: InternalProxy::from_deserialize_proxy(idx29),
+                index_36: InternalProxy::from_deserialize_proxy(internal.index_36.unwrap_or_default()),
+                index_40: InternalProxy::from_deserialize_proxy(internal.index_40.unwrap_or_default()),
+                index_52: InternalProxy::from_deserialize_proxy(internal.index_52.unwrap_or_default()),
+                index_53: InternalProxy::from_deserialize_proxy(internal.index_53.unwrap_or_default()),
+                index_57: InternalProxy::from_deserialize_proxy(internal.index_57.unwrap_or_default()),
+            },
+            _ => return Err(D::Error::custom("Missing indices for level data!")),
+        };
+
+        Ok(Self {
+            level_id: InternalProxy::from_deserialize_proxy(internal.index_1),
+            name: InternalProxy::from_deserialize_proxy(internal.index_2),
+            description: InternalProxy::from_deserialize_proxy(internal.index_3),
+            version: InternalProxy::from_deserialize_proxy(internal.index_5),
+            creator: InternalProxy::from_deserialize_proxy(internal.index_6),
+            downloads: InternalProxy::from_deserialize_proxy(internal.index_10),
+            gd_version: InternalProxy::from_deserialize_proxy(internal.index_13),
+            likes: InternalProxy::from_deserialize_proxy(internal.index_14),
+            length: InternalProxy::from_deserialize_proxy(internal.index_15),
+            stars: InternalProxy::from_deserialize_proxy(internal.index_18),
+            featured: InternalProxy::from_deserialize_proxy(internal.index_19),
+            copy_of: InternalProxy::from_deserialize_proxy(internal.index_30),
+            two_player: InternalProxy::from_deserialize_proxy(internal.index_31),
+            custom_song: InternalProxy::from_deserialize_proxy(internal.index_35),
+            coin_amount: InternalProxy::from_deserialize_proxy(internal.index_37),
+            coins_verified: InternalProxy::from_deserialize_proxy(internal.index_38),
+            stars_requested: InternalProxy::from_deserialize_proxy(internal.index_39),
+            is_epic: InternalProxy::from_deserialize_proxy(internal.index_42),
+            object_amount: InternalProxy::from_deserialize_proxy(internal.index_45),
+            index_46: InternalProxy::from_deserialize_proxy(internal.index_46),
+            index_47: InternalProxy::from_deserialize_proxy(internal.index_47),
+
+            main_song: if internal.index_35.is_some() {
+                None
+            } else {
+                Some(MainSong::from(internal.index_12))
+            },
+            difficulty: if !internal.index_8 {
+                LevelRating::NotAvailable
+            } else if internal.index_25 {
+                LevelRating::Auto
+            } else if internal.index_17 {
+                LevelRating::Demon(DemonRating::from_response_value(internal.index_9))
+            } else {
+                LevelRating::from_response_value(internal.index_9)
+            },
+
+            level_data,
+        })
+    }
+
+    fn dash_serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // We are in a manual impl, so we can do the .as_deref() trick to avoid needing two separate structs
+        let index_3 = self.description.to_serialize_proxy();
+        let index_4 = self.level_data.level_data.to_serialize_proxy();
+        let index_27 = self.level_data.password.to_serialize_proxy();
+
+        let internal = InternalLevel {
+            index_1: self.level_id.to_serialize_proxy(),
+            index_2: self.name.to_serialize_proxy(),
+            index_3: index_3.as_deref(),
+            index_5: self.version.to_serialize_proxy(),
+            index_6: self.creator.to_serialize_proxy(),
+            index_10: self.downloads.to_serialize_proxy(),
+            index_13: self.gd_version.to_serialize_proxy(),
+            index_14: self.likes.to_serialize_proxy(),
+            index_15: self.length.to_serialize_proxy(),
+            index_18: self.stars.to_serialize_proxy(),
+            index_19: self.featured.to_serialize_proxy(),
+            index_30: self.copy_of.to_serialize_proxy(),
+            index_31: self.two_player.to_serialize_proxy(),
+            index_35: self.custom_song.to_serialize_proxy(),
+            index_37: self.coin_amount.to_serialize_proxy(),
+            index_38: self.coins_verified.to_serialize_proxy(),
+            index_39: self.stars_requested.to_serialize_proxy(),
+            index_42: self.is_epic.to_serialize_proxy(),
+            index_45: self.object_amount.to_serialize_proxy(),
+            index_46: self.index_46.to_serialize_proxy(),
+            index_47: self.index_47.to_serialize_proxy(),
+
+            index_12: self.main_song.map(|song| song.main_song_id).unwrap_or(0),
+            index_25: self.difficulty == LevelRating::Auto,
+            index_8: self.difficulty != LevelRating::NotAvailable,
+            index_9: self.difficulty.into_response_value(),
+            index_17: self.difficulty.is_demon(),
+            index_43: match self.difficulty {
+                LevelRating::Demon(DemonRating::Easy) => 3,
+                LevelRating::Demon(DemonRating::Medium) => 4,
+                LevelRating::Demon(DemonRating::Hard) => 0,
+                LevelRating::Demon(DemonRating::Insane) => 5,
+                LevelRating::Demon(DemonRating::Extreme) => 6,
+                _ => 5,
+            },
+
+            index_4: Some(index_4.borrow()),
+            index_27: Some(index_27.borrow()),
+            index_28: Some(self.level_data.time_since_upload.to_serialize_proxy()),
+            index_29: Some(self.level_data.time_since_update.to_serialize_proxy()),
+            index_36: Some(self.level_data.index_36.to_serialize_proxy()),
+            index_40: Some(self.level_data.index_40.to_serialize_proxy()),
+            index_52: Some(self.level_data.index_52.to_serialize_proxy()),
+            index_53: Some(self.level_data.index_53.to_serialize_proxy()),
+            index_57: Some(self.level_data.index_57.to_serialize_proxy()),
+        };
+        internal.serialize(serializer)
+    }
+}
+
+impl InternalProxy for LevelLength {
+    type DeserializeProxy = i32;
+    type SerializeProxy<'a>
+        = i32
+    where
+        Self: 'a;
+
+    fn to_serialize_proxy(&self) -> Self::SerializeProxy<'_> {
+        match *self {
+            LevelLength::Unknown(unknown) => unknown,
+            LevelLength::Tiny => 0,
+            LevelLength::Short => 1,
+            LevelLength::Medium => 2,
+            LevelLength::Long => 3,
+            LevelLength::ExtraLong => 4,
+            LevelLength::Platformer => 5,
+        }
+    }
+
+    fn from_deserialize_proxy(from: Self::DeserializeProxy) -> Self {
+        match from {
+            0 => LevelLength::Tiny,
+            1 => LevelLength::Short,
+            2 => LevelLength::Medium,
+            3 => LevelLength::Long,
+            4 => LevelLength::ExtraLong,
+            5 => LevelLength::Platformer,
+            int => LevelLength::Unknown(int),
+        }
+    }
 }
 
 // impl LevelRating {
@@ -103,166 +404,41 @@ mod level_length {
 //     }
 // }
 
-// #[allow(non_upper_case_globals, unused_imports)]
-// const _partial_level: () = {
-//     use crate::{
-//         serde::{DeError, HasRobtopFormat, IndexedDeserializer, IndexedSerializer, PercentDecoded, SerError, Thunk, RefThunk, Base64Decoded},
-//     };
-//     use serde::{Deserialize, Serialize};
-//     use std::{borrow::{Cow, Borrow}, io::Write};
-//     #[derive(Serialize, Deserialize)]
-//     struct InternalLevel<'src, 'bor> {
-//         #[serde(rename = "1")]
-//         index_1: u64,
-//         #[serde(rename = "2")]
-//         index_2: &'src str,
-//         #[serde(rename = "3")]
-//         index_3: Option<RefThunk<'src, 'bor, Base64Decoded<'src>>>,
-//         #[serde(rename = "5")]
-//         index_5: u32,
-//         #[serde(rename = "6")]
-//         index_6: u64,
-//         #[serde(serialize_with = "crate::util::false_to_empty_string")]
-//         #[serde(rename = "25")]
-//         index_25: bool,
-//         #[serde(serialize_with = "crate::util::true_to_ten")]
-//         #[serde(rename = "8")]
-//         index_8: bool,
-//         #[serde(rename = "9")]
-//         index_9: i32,
-//         #[serde(serialize_with = "crate::util::false_to_empty_string")]
-//         #[serde(rename = "17")]
-//         index_17: bool,
-//         #[serde(rename = "10")]
-//         index_10: u32,
-//         #[serde(rename = "12")]
-//         index_12: u8,
-//         #[serde(rename = "13")]
-//         index_13: u8,
-//         #[serde(rename = "14")]
-//         index_14: i32,
-//         #[serde(with = "level_length")]
-//         #[serde(rename = "15")]
-//         index_15: LevelLength,
-//         #[serde(rename = "18")]
-//         index_18: u8,
-//         #[serde(rename = "19")]
-//         index_19: Featured,
-//         #[serde(with = "crate::util::default_to_none")]
-//         #[serde(rename = "30")]
-//         index_30: Option<u64>,
-//         #[serde(rename = "31")]
-//         index_31: bool,
-//         #[serde(with = "crate::util::default_to_none")]
-//         #[serde(rename = "35")]
-//         index_35: Option<u64>,
-//         #[serde(rename = "37")]
-//         index_37: u8,
-//         #[serde(rename = "38")]
-//         index_38: bool,
-//         #[serde(with = "crate::util::default_to_none")]
-//         #[serde(rename = "39")]
-//         index_39: Option<u8>,
-//         #[serde(rename = "42")]
-//         index_42: bool,
-//         #[serde(rename = "43")]
-//         index_43: u8,
-//         #[serde(with = "crate::util::default_to_none")]
-//         #[serde(rename = "45")]
-//         index_45: Option<u32>,
-//         #[serde(rename = "46")]
-//         index_46: Option<&'src str>,
-//         #[serde(rename = "47")]
-//         index_47: Option<&'src str>,
-//     }
-//     impl<'src> HasRobtopFormat<'src> for Level<'src, ()> {
-//         fn from_robtop_str(input: &'src str) -> Result<Self, DeError> {
-//             let internal = InternalLevel::deserialize(&mut IndexedDeserializer::new(input, ":", true))?;
-//             Ok(Self {
-//                 level_id: internal.index_1,
-//                 name: Cow::Borrowed(internal.index_2),
-//                 description: match internal.index_3 {None => None, Some(RefThunk::Unprocessed(unproc)) => Some(Thunk::Unprocessed(unproc)), _ => unreachable!()},
-//                 version: internal.index_5,
-//                 creator: internal.index_6,
-//                 downloads: internal.index_10,
-//                 gd_version: internal.index_13.into(),
-//                 likes: internal.index_14,
-//                 length: internal.index_15,
-//                 stars: internal.index_18,
-//                 featured: internal.index_19,
-//                 copy_of: internal.index_30,
-//                 two_player: internal.index_31,
-//                 custom_song: internal.index_35,
-//                 coin_amount: internal.index_37,
-//                 coins_verified: internal.index_38,
-//                 stars_requested: internal.index_39,
-//                 is_epic: internal.index_42,
-//                 object_amount: internal.index_45,
-//                 index_46: internal.index_46.map(Cow::Borrowed),
-//                 index_47: internal.index_47.map(Cow::Borrowed),
-//                 main_song: if internal.index_35.is_some() { // custom_song
-//                     None
-//                 } else {
-//                     Some(MainSong::from(internal.index_12)) // main_song
-//                 }
-//                 ,
-//                 difficulty: if !internal.index_8 { // has_difficulty_rating
-//                     LevelRating::NotAvailable
-//                 } else if internal.index_25 { // is_auto
-//                     LevelRating::Auto
-//                 } else if internal.index_17 { // is_demon
-//                     LevelRating::Demon(DemonRating::from_response_value(internal.index_9))
-//                 } else {
-//                     LevelRating::from_response_value(internal.index_9) // rating
-//                 }
-//                 ,
-//                 level_data: (),
-//             })
-//         }
-//         fn write_robtop_data<W: Write>(&self, writer: W) -> Result<(), SerError> {
-//             let internal = InternalLevel {
-//                 index_1: self.level_id,
-//                 index_2: self.name.as_ref(),
-//                 index_3: self.description.as_ref().map(|t| t.as_ref_thunk()),
-//                 index_5: self.version,
-//                 index_6: self.creator,
-//                 index_25: self.difficulty == LevelRating::Auto
-//                 ,
-//                 index_8: self.difficulty != LevelRating::NotAvailable
-//                 ,
-//                 index_9: self.difficulty.into_response_value()
-//                 ,
-//                 index_17: self.difficulty.is_demon()
-//                 ,
-//                 index_10: self.downloads,
-//                 index_12: self.main_song.map(|song| song.main_song_id).unwrap_or(0)
-//                 ,
-//                 index_13: self.gd_version.into(),
-//                 index_14: self.likes,
-//                 index_15: self.length,
-//                 index_18: self.stars,
-//                 index_19: self.featured,
-//                 index_30: self.copy_of,
-//                 index_31: self.two_player,
-//                 index_35: self.custom_song,
-//                 index_37: self.coin_amount,
-//                 index_38: self.coins_verified,
-//                 index_39: self.stars_requested,
-//                 index_42: self.is_epic,
-//                 index_43: match self.difficulty {
-//                     LevelRating::Demon(DemonRating::Easy) => 3,
-//                     LevelRating::Demon(DemonRating::Medium) => 4,
-//                     LevelRating::Demon(DemonRating::Hard) => 0,
-//                     LevelRating::Demon(DemonRating::Insane) => 5,
-//                     LevelRating::Demon(DemonRating::Extreme) => 6,
-//                     _ => 5, // this seems to be the default for non-demons
-//                 }
-//                 ,
-//                 index_45: self.object_amount,
-//                 index_46: self.index_46.as_deref(),
-//                 index_47: self.index_47.as_deref(),
-//             };
-//             internal.serialize(&mut IndexedSerializer::new(":", writer, true))
-//         }
-//     }
-//};
+    fn into_response_value(self) -> i32 {
+        match self {
+            LevelRating::Unknown(value) => value,
+            LevelRating::NotAvailable => 0,
+            LevelRating::Easy => 10,
+            LevelRating::Normal => 20,
+            LevelRating::Hard => 30,
+            LevelRating::Harder => 40,
+            LevelRating::Insane => 50,
+            LevelRating::Demon(demon_rating) => demon_rating.into_response_value(),
+            _ => panic!("got {:?}, please handle before calling this function", self),
+        }
+    }
+}
+
+impl DemonRating {
+    fn from_response_value(value: i32) -> DemonRating {
+        match value {
+            10 => DemonRating::Easy,
+            20 => DemonRating::Medium,
+            30 => DemonRating::Hard,
+            40 => DemonRating::Insane,
+            50 => DemonRating::Extreme,
+            _ => DemonRating::Unknown(value),
+        }
+    }
+
+    fn into_response_value(self) -> i32 {
+        match self {
+            DemonRating::Unknown(value) => value,
+            DemonRating::Easy => 10,
+            DemonRating::Medium => 20,
+            DemonRating::Hard => 30,
+            DemonRating::Insane => 40,
+            DemonRating::Extreme => 50,
+        }
+    }
+}

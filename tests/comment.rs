@@ -1,161 +1,95 @@
-use std::borrow::Cow;
-use dash_rs::{
-    request::{
-        account::LoginRequest,
-        comment::{UploadCommentRequest, DeleteCommentRequest, CommentHistoryRequest, LevelCommentsRequest, ProfileCommentsRequest, SortMode},
-    },
+use dash_rs::model::comment::{
+    level::{CommentUser, LevelComment},
+    profile::ProfileComment,
 };
-use dash_rs::request::account::AuthenticatedUser;
-use dash_rs::response::{parse_get_gj_acccount_comments_response, parse_get_gj_comments_response};
+use framework::load_test_units;
+use std::path::Path;
 
-const CONTENT_TYPE: &str = "Content-Type";
-const URL_FORM_ENCODED: &str = "application/x-www-form-urlencoded";
+mod framework;
 
-#[tokio::test]
-async fn get_level_comments() {
-    let client = reqwest::Client::new();
+enum LevelCommentTester {}
 
-    let request = LevelCommentsRequest::new(76298358)
-        .page(0)
-        .limit(5)
-        .most_recent();
+impl framework::Testable for LevelCommentTester {
+    type Target<'a> = LevelComment<'a>;
 
-    let raw_response = client.post(request.to_url())
-        .body(request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-    println!("{}", &raw_response);
-
-    let level_comments = parse_get_gj_comments_response(&raw_response).unwrap();
-
-    assert_eq!(level_comments.len(), 5);
+    fn canonicalize(target: &mut Self::Target<'_>) {
+        if let Some(ref mut cnt) = target.content {
+            cnt.process().unwrap();
+        }
+        if let Some(ref mut cnt) = target.special_color {
+            cnt.process().unwrap();
+        }
+    }
 }
 
-
-#[tokio::test]
-async fn get_profile_comments() {
-    let client = reqwest::Client::new();
-
-    let request = ProfileCommentsRequest::new(57903)
-        .page(0);
-
-    let raw_response = client.post(request.to_url())
-        .body(request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-
-
-    let profile_comments = parse_get_gj_acccount_comments_response(&raw_response)
-        .unwrap();
-
-    assert_eq!(profile_comments.len(), 3);
-}
-#[tokio::test]
-async fn get_comment_history() {
-    let client = reqwest::Client::new();
-
-    let comment_history_request = CommentHistoryRequest::new(17577805)
-        .sort_mode(SortMode::Recent)
-        .count(1)
-        .page(0);
-
-    let comment_history_response = client.post(comment_history_request.to_url())
-        .body(comment_history_request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-
-    let comment_history_response = parse_get_gj_comments_response(&comment_history_response)
-        .unwrap();
-    println!("{:?}", &comment_history_response)
-}
-
-#[tokio::test]
-async fn upload_comment() {
-    dotenv::from_filename("test_env.env").expect("test_env.env file not found");
-
-    let user_name = dotenv::var("GJ_ACCOUNT_USERNAME").unwrap();
-    let password = dotenv::var("GJ_ACCOUNT_PASSWORD").unwrap();
-    let client = reqwest::Client::new();
-
-    let login_response = AuthenticatedUser::new(
-        "Ryder",
-        57903,
-        Cow::Borrowed("UmVkaXNuZU1FQXJFREdlTnRJQw==")
+#[test]
+fn test_level_comment() {
+    let units = load_test_units::<LevelCommentTester>(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("artifacts")
+            .join("level_comment"),
     );
 
-    let comment_upload_request = UploadCommentRequest::new(login_response, 76298358)
-        .comment("More tests still ignore me")
-        .percent(69);
+    for (path, unit) in units {
+        println!("Testing case {:?}", path);
 
-    let response = client.post(comment_upload_request.to_url())
-        .body(comment_upload_request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-
-    assert!(!response.eq("-1"))
+        unit.test_consistency();
+        unit.test_load_save_roundtrip();
+        unit.test_save_load_roundtrip();
+    }
 }
 
-#[tokio::test]
-async fn delete_comment() {
-    let client = reqwest::Client::new();
+enum CommentUserTester {}
 
-    let login_response = AuthenticatedUser::new(
-        "Ryder",
-        57903,
-        Cow::Borrowed("UmVkaXNuZU1FQXJFREdlTnRJQw==")
+impl framework::Testable for CommentUserTester {
+    type Target<'a> = CommentUser<'a>;
+}
+
+#[test]
+fn test_level_comment_user() {
+    let units = load_test_units::<CommentUserTester>(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("artifacts")
+            .join("comment_user"),
     );
 
-    let comment_history_request = CommentHistoryRequest::new(3713125)
-        .sort_mode(SortMode::Recent)
-        .count(1)
-        .page(0);
+    for (path, unit) in units {
+        println!("Testing case {:?}", path);
 
-    let comment_history_response = client.post(comment_history_request.to_url())
-        .body(comment_history_request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+        unit.test_consistency();
+        unit.test_load_save_roundtrip();
+        unit.test_save_load_roundtrip();
+    }
+}
 
-    let comment_history_response = parse_get_gj_comments_response(&comment_history_response)
-        .unwrap();
+enum ProfileCommentTester {}
 
-    let comment_id = comment_history_response.get(0).unwrap().comment_id;
+impl framework::Testable for ProfileCommentTester {
+    type Target<'a> = ProfileComment<'a>;
 
-    let comment_delete_request = DeleteCommentRequest::new(login_response, 76298358, comment_id);
+    fn canonicalize(target: &mut Self::Target<'_>) {
+        if let Some(ref mut cnt) = target.content {
+            cnt.process().unwrap();
+        }
+    }
+}
 
-    let comment_delete_response = client.post(comment_delete_request.to_url())
-        .body(comment_delete_request.to_string())
-        .header(CONTENT_TYPE, URL_FORM_ENCODED)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+#[test]
+fn test_profile_comment() {
+    let units = load_test_units::<ProfileCommentTester>(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("artifacts")
+            .join("profile_comment"),
+    );
 
-    assert!(!comment_delete_response.eq("-1"))
+    for (path, unit) in units {
+        println!("Testing case {:?}", path);
+
+        unit.test_consistency();
+        unit.test_load_save_roundtrip();
+        unit.test_save_load_roundtrip();
+    }
 }

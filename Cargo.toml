@@ -1,3 +1,6 @@
+[workspace]
+members = ["dash-rs-derive"]
+
 [package]
 name = "dash-rs"
 version = "0.1.0"
@@ -8,29 +11,35 @@ edition = "2018"
 
 [dependencies]
 serde = {version = "1.0.118", features = ["derive"]}
-base64 = "0.11.0"
 sha1_smol = "1.0.0"
+base64 = "0.21.5"
 log = {version = "0.4.8" }
 percent-encoding = "2.1.0"
-itoa = "0.4.4"
-dtoa = "0.4.4"
+itoa = "1.0.10"
 flate2 = {version = "1.0.14", features = ["zlib"], default-features=false}
-rand = "0.8.5"
-reqwest = "0.11"
-async-trait = "0.1.57"
-tokio = { version = "1.21.2", features = ["macros", "rt"]}
+variant_partial_eq = { git = "https://github.com/stadust/variant-partial-eq" }
+thiserror = "1.0.51"
+dash-rs-derive = { path = "dash-rs-derive" }
 
 [dev-dependencies]
 # benchmark
-env_logger = "0.7.1"
-criterion = "0.3"
-tokio-test = "*"
+env_logger = "0.10.1"
+criterion = "0.5.1"
 dotenv = "0.15.0"
+
+# Dependencies used by examples
+reqwest = "0.11.17"
+tokio = {version = "1.28.0", features = ["macros", "rt-multi-thread"]}
+serde_json = "1.0.108"
+pretty_assertions = "1.4.0"
 
 [build-dependencies]
 serde = {version = "1.0.104", features = ["derive"]}
-serde_yaml = "0.8.14"
+serde_yaml = "0.9.29"
 
 [[bench]]
 name = "level_processing_benchmark"
 harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(dash_rs_dev_debug)'] }

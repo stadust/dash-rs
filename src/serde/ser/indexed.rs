@@ -1,6 +1,5 @@
 use crate::serde::ser::error::Error;
-use dtoa::Floating;
-use itoa::Integer;
+use itoa::{Buffer, Integer};
 use serde::{
     ser::{Error as _, Impossible, SerializeStruct},
     Serialize, Serializer,
@@ -43,19 +42,20 @@ where
             self.writer.write_all(self.delimiter)?;
         }
 
-        itoa::write(&mut self.writer, int).map_err(Error::custom)?;
+        let mut buffer = Buffer::new();
+        self.writer.write(buffer.format(int).as_bytes()).map_err(Error::custom)?;
 
         Ok(())
     }
 
-    fn append_float<F: Floating>(&mut self, float: F) -> Result<(), Error> {
+    fn append_display<D: Display>(&mut self, val: D) -> Result<(), Error> {
         if self.is_start {
             self.is_start = false;
         } else {
             self.writer.write_all(self.delimiter)?;
         }
 
-        dtoa::write(&mut self.writer, float).map_err(Error::custom)?;
+        write!(&mut self.writer, "{}", val).map_err(Error::custom)?;
 
         Ok(())
     }
@@ -72,7 +72,7 @@ where
     }
 }
 
-impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
+impl<W: Write> Serializer for &mut IndexedSerializer<W> {
     type Error = Error;
     type Ok = ();
     type SerializeMap = Impossible<(), Error>;
@@ -119,12 +119,20 @@ impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
         self.append_integer(v)
     }
 
+    // Why we do not use dtoa or ryu here: Those libraries append an unneeded
+    // '.0' suffix for floating point numbers that represent integers. Robtop's
+    // formatting does not do this, and we'd like to match RobTop formatting
+    // as closely as possible (if only so that roundtrip tests do not need
+    // to deal with a myriad of exceptions).
+    // Therefore, use the standard library, despite it being up to 4x slower
+    // at printing floats. This is serialization, so performance is less of a
+    // concern.
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        self.append_float(v)
+        self.append_display(v)
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        self.append_float(v)
+        self.append_display(v)
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
@@ -140,8 +148,8 @@ impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
 
     // Here we serialize bytes by base64 encoding them, so it's always valid in Geometry Dash's format
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        use base64::{write::EncoderWriter, URL_SAFE};
-        let mut enc = EncoderWriter::new(&mut self.writer, URL_SAFE);
+        use base64::{engine::general_purpose::URL_SAFE, write::EncoderWriter};
+        let mut enc = EncoderWriter::new(&mut self.writer, &URL_SAFE);
         enc.write_all(v)?;
         enc.finish()?;
         Ok(())
@@ -152,9 +160,9 @@ impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
         Ok(())
     }
 
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         value.serialize(self)
     }
@@ -171,18 +179,18 @@ impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
         Err(Error::Unsupported("serialize_unit_variant"))
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         Err(Error::Unsupported("serialize_newtype_struct"))
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self, _name: &'static str, _variant_index: u32, _variant: &'static str, _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         Err(Error::Unsupported("serialize_newtype_variant"))
     }
@@ -220,21 +228,21 @@ impl<'a, W: Write> Serializer for &'a mut IndexedSerializer<W> {
         Err(Error::Unsupported("serialize_struct_variant"))
     }
 
-    fn collect_str<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn collect_str<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Display,
+        T: Display + ?Sized,
     {
         Err(Error::Unsupported("collect_str"))
     }
 }
 
-impl<'a, W: Write> SerializeStruct for &'a mut IndexedSerializer<W> {
-    type Error = Error;
+impl<W: Write> SerializeStruct for &mut IndexedSerializer<W> {
     type Ok = ();
+    type Error = Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         if self.map_like {
             self.append(key)?;
@@ -244,5 +252,21 @@ impl<'a, W: Write> SerializeStruct for &'a mut IndexedSerializer<W> {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde::Serializer;
+
+    use super::IndexedSerializer;
+
+    // Test that documents a robtop quirk: Floats without decimal part are represented as integer
+    #[test]
+    fn serialize_float_without_decimal_part_serializes_as_integer() {
+        let mut buffer = Vec::new();
+        let mut serializer = IndexedSerializer::new(":", &mut buffer, false);
+        serializer.serialize_f64(11.0f64).unwrap();
+        assert_eq!("11", std::str::from_utf8(buffer.as_slice()).unwrap());
     }
 }

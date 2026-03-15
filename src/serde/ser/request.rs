@@ -13,8 +13,7 @@
 //!   investigated) TODO GAME SPECIFIC
 
 use crate::serde::SerError as Error;
-use dtoa::Floating;
-use itoa::Integer;
+use itoa::{Buffer, Integer};
 use serde::{
     ser::{Error as _, Impossible, SerializeStruct},
     Serialize, Serializer,
@@ -46,7 +45,7 @@ macro_rules! unsupported {
     };
 }
 
-impl<'a, W: Write> Serializer for &'a mut RequestSerializer<W> {
+impl<W: Write> Serializer for &mut RequestSerializer<W> {
     type Error = Error;
     type Ok = ();
     type SerializeMap = Impossible<(), Error>;
@@ -78,9 +77,9 @@ impl<'a, W: Write> Serializer for &'a mut RequestSerializer<W> {
         Err(Error::Unsupported("serialize_none"))
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         Err(Error::Unsupported("serialize_some"))
     }
@@ -97,18 +96,18 @@ impl<'a, W: Write> Serializer for &'a mut RequestSerializer<W> {
         Err(Error::Unsupported("serialize_unit_variant"))
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         Err(Error::Unsupported("serialize_newtype_struct"))
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self, _name: &'static str, _variant_index: u32, _variant: &'static str, _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         Err(Error::Unsupported("serialize_newtype_variant"))
     }
@@ -145,21 +144,21 @@ impl<'a, W: Write> Serializer for &'a mut RequestSerializer<W> {
         Err(Error::Unsupported("serialize_struct_variant"))
     }
 
-    fn collect_str<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn collect_str<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Display,
+        T: Display + ?Sized,
     {
         Err(Error::Unsupported("collect_str"))
     }
 }
 
-impl<'a, W: Write> SerializeStruct for &'a mut RequestSerializer<W> {
-    type Error = Error;
+impl<W: Write> SerializeStruct for &mut RequestSerializer<W> {
     type Ok = ();
+    type Error = Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         if !self.is_start {
             self.writer.write(b"&").map_err(Error::custom)?;
@@ -200,15 +199,16 @@ impl<'ser, W: Write> ValueSerializer<'ser, W> {
     fn write_integer<I: Integer>(&mut self, int: I) -> Result<(), Error> {
         self.write_key()?;
 
-        itoa::write(&mut self.serializer.writer, int).map_err(Error::custom)?;
+        let mut buffer = Buffer::new();
+        self.serializer.writer.write(buffer.format(int).as_bytes()).map_err(Error::custom)?;
 
         Ok(())
     }
 
-    fn write_float<F: Floating>(&mut self, float: F) -> Result<(), Error> {
+    fn write_display<D: Display>(&mut self, val: D) -> Result<(), Error> {
         self.write_key()?;
 
-        dtoa::write(&mut self.serializer.writer, float).map_err(Error::custom)?;
+        write!(&mut self.serializer.writer, "{}", val).map_err(Error::custom)?;
 
         Ok(())
     }
@@ -270,11 +270,11 @@ impl<'ser, 'a, W: Write> Serializer for &'a mut ValueSerializer<'ser, W> {
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        self.write_float(v)
+        self.write_display(v)
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        self.write_float(v)
+        self.write_display(v)
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
@@ -307,9 +307,9 @@ impl<'ser, 'a, W: Write> Serializer for &'a mut ValueSerializer<'ser, W> {
         self.write_key()
     }
 
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         value.serialize(self)
     }
@@ -326,25 +326,25 @@ impl<'ser, 'a, W: Write> Serializer for &'a mut ValueSerializer<'ser, W> {
         Err(Error::Unsupported("serialize_unit_variant"))
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         Err(Error::Unsupported("serialize_newtype_struct"))
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self, _name: &'static str, _variant_index: u32, _variant: &'static str, _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         Err(Error::Unsupported("serialize_newtype_variant"))
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         if self.key.is_none() {
-            return Err(Error::Unsupported("Nested sequences"))
+            return Err(Error::Unsupported("Nested sequences"));
         }
 
         self.write_key()?;
@@ -382,7 +382,7 @@ impl<'ser, 'a, W: Write> Serializer for &'a mut ValueSerializer<'ser, W> {
 
     fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct, Self::Error> {
         if self.key.is_none() {
-            return Err(Error::Unsupported("struct inside sequence"))
+            return Err(Error::Unsupported("struct inside sequence"));
         }
 
         // If we inline a struct, that struct might not be the first field we serialize. However, we do not
@@ -400,9 +400,9 @@ impl<'ser, 'a, W: Write> Serializer for &'a mut ValueSerializer<'ser, W> {
         Err(Error::Unsupported("serialize_struct_variant"))
     }
 
-    fn collect_str<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn collect_str<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Display,
+        T: Display + ?Sized,
     {
         Err(Error::Unsupported("collect_str"))
     }
@@ -418,9 +418,9 @@ impl<'write, W: Write> serde::ser::SerializeSeq for SerializeSeq<'write, W> {
     type Error = Error;
     type Ok = ();
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         if !self.is_start {
             self.serializer.writer.write(b",").map_err(Error::custom)?;
@@ -460,11 +460,10 @@ mod tests {
             writer: &mut buffer,
             is_start: true,
         };
-        let result = level_request.serialize(&mut ser);
+        level_request.serialize(&mut ser).unwrap();
 
-        assert!(result.is_ok(), "{:?}", result);
         assert_eq!(
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&levelID=0&inc=0&extra=0",
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&levelID=0&inc=0&extra=0",
             String::from_utf8(buffer).unwrap()
         );
     }
