@@ -75,7 +75,7 @@ pub struct LevelCommentsRequest<'a> {
     pub level_id: u64,
 
     /// The amount of comments to retrieve. Note that while in-game this can only be set to 20 or 40
-    /// (via the "load more comments option), the API accepts any value. The max value for this is 100
+    /// (via the "load more comments" option), the API accepts any value. The max value for this is 100
     ///
     /// ## GD Internals:
     /// This field is called `count` in the Boomlings API
@@ -243,6 +243,12 @@ impl<'a> CommentHistoryRequest<'a> {
     }
 }
 
+impl Display for CommentHistoryRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Hash)]
 pub struct UploadCommentRequest<'a> {
     /// The base request data
@@ -313,6 +319,12 @@ impl<'a> UploadCommentRequest<'a> {
     }
 }
 
+impl Display for UploadCommentRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Hash)]
 pub struct DeleteCommentRequest<'a> {
     /// The base request data
@@ -332,6 +344,12 @@ pub struct DeleteCommentRequest<'a> {
     /// This field is called `levelID` in the Boomlings API
     #[serde(rename = "levelID")]
     pub level_id: u64,
+}
+
+impl Display for ProfileCommentsRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
+    }
 }
 
 impl<'a> DeleteCommentRequest<'a> {
@@ -357,7 +375,7 @@ impl<'a> DeleteCommentRequest<'a> {
     }
 }
 
-impl Display for ProfileCommentsRequest<'_> {
+impl Display for DeleteCommentRequest<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", super::to_string(self))
     }
@@ -368,12 +386,6 @@ mod tests {
     use std::borrow::Cow;
     use crate::request::comment::{LevelCommentsRequest, ProfileCommentsRequest, CommentHistoryRequest, UploadCommentRequest, DeleteCommentRequest, SortMode};
     use crate::request::account::AuthenticatedUser;
-
-    const TEST_AUTHENTICATED_USER: AuthenticatedUser = AuthenticatedUser::new(
-        "Ryder",
-        57903,
-        Cow::Borrowed("UmVkaXNuZU1FQXJFREdlTnRJQw==")
-    );
 
     #[test]
     fn serialize_level_comments() {
@@ -430,13 +442,18 @@ mod tests {
             eprintln!("Error setting up env_logger: {:?}", err)
         }
 
-        let request = UploadCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632)
+        let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
+            "Ryder",
+            57903,
+            Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
+        );
+        let request = UploadCommentRequest::new(test_authenticated_user, 85179632)
             .comment("This is a test comment")
             .percent(56);
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&comment=VGhpcyBpcyBhIHRlc3QgY29tbWVudA==&levelID=85179632&percent=56&chk=UQsGAAEACgQBVQBaAwoGVwtSDQIEWAYOUFEAVQoIBVtWDwEHDQEJVA=="
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=Ryder&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&comment=VGhpcyBpcyBhIHRlc3QgY29tbWVudA==&levelID=85179632&percent=56&chk=UQsGAAEACgQBVQBaAwoGVwtSDQIEWAYOUFEAVQoIBVtWDwEHDQEJVA=="
         );
     }
 
@@ -447,7 +464,12 @@ mod tests {
             eprintln!("Error setting up env_logger: {:?}", err)
         }
 
-        let request = DeleteCommentRequest::new(TEST_AUTHENTICATED_USER, 85179632, 7000000);
+        let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
+            "Ryder",
+            57903,
+            Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
+        );
+        let request = DeleteCommentRequest::new(test_authenticated_user, 85179632, 7000000);
 
         assert_eq!(
             request.to_string(),

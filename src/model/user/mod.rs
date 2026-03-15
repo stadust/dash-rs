@@ -370,3 +370,7 @@ impl From<Color> for u8 {
 
 crate::into_conversion!(Color, u8);
 crate::into_conversion!(IconType, u8);
+crate::into_conversion!(MessageState, u8);
+crate::into_conversion!(FriendsState, u8);
+crate::into_conversion!(FriendState, u8);
+crate::into_conversion!(CommentHistoryState, u8);

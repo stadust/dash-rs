@@ -1,10 +1,11 @@
+use std::fmt::Display;
 use serde::Serialize;
-use crate::request::{BaseRequest, MODERATOR_GD_21, REQUEST_BASE_URL};
+use crate::request::{endpoint_base_url, BaseRequest, MODERATOR_GD_22};
 use crate::request::account::AuthenticatedUser;
 
 pub const SUGGEST_STARS_ENDPOINT: &str = "suggestGJStars20.php";
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash)]
 pub struct SuggestStarsRequest<'a> {
     /// The base request data
     pub base: BaseRequest<'a>,
@@ -34,64 +35,64 @@ pub struct SuggestStarsRequest<'a> {
     pub gdw: u8
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Hash)]
 #[serde(into = "u8")]
 pub enum SuggestedStars {
-    /// Suggest the level with a one star rating
+    /// Suggest the level with a one-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `1` in the Boomlings API
     One,
 
-    /// Suggest the level with a two star rating
+    /// Suggest the level with a two-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `2` in the Boomlings API
     Two,
 
-    /// Suggest the level with a three star rating
+    /// Suggest the level with a three-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `3` in the Boomlings API
     Three,
 
-    /// Suggest the level with a four star rating
+    /// Suggest the level with a four-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `4` in the Boomlings API
     Four,
 
-    /// Suggest the level with a five star rating
+    /// Suggest the level with a five-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `5` in the Boomlings API
     Five,
 
-    /// Suggest the level with a six star rating
+    /// Suggest the level with a six-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `6` in the Boomlings API
     Six,
 
-    /// Suggest the level with a seven star rating
+    /// Suggest the level with a seven-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `7` in the Boomlings API
     Seven,
 
-    /// Suggest the level with an eight star rating
+    /// Suggest the level with an eight-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `8` in the Boomlings API
     Eight,
 
-    /// Suggest the level with a nine star rating
+    /// Suggest the level with a nine-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `9` in the Boomlings API
     Nine,
 
-    /// Suggest the level with a ten star rating
+    /// Suggest the level with a ten-star rating
     ///
     /// ## GD Internals:
     /// This variant is represented by the numeric value `10` in the Boomlings API
@@ -115,7 +116,7 @@ impl From<SuggestedStars> for u8 {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Hash)]
 #[serde(into = "u8")]
 pub enum SuggestedFeatureScore {
     /// Suggest the level with a Rate feature score
@@ -163,7 +164,7 @@ impl<'a> SuggestStarsRequest<'a> {
     const_setter!(feature: SuggestedFeatureScore);
 
     pub const fn new(authenticated_user: AuthenticatedUser<'a>, level_id: u64) -> Self {
-        Self::with_base(MODERATOR_GD_21, authenticated_user, level_id)
+        Self::with_base(MODERATOR_GD_22, authenticated_user, level_id)
     }
 
     const fn with_base(base: BaseRequest<'a>,  authenticated_user: AuthenticatedUser<'a>, level_id: u64) -> Self {
@@ -178,11 +179,13 @@ impl<'a> SuggestStarsRequest<'a> {
     }
 
     pub fn to_url(&self) -> String {
-        format!("{}{}", REQUEST_BASE_URL, SUGGEST_STARS_ENDPOINT)
+        format!("{}{}", endpoint_base_url(), SUGGEST_STARS_ENDPOINT)
     }
+}
 
-    pub fn to_string(&self) -> String {
-        super::to_string(&self)
+impl Display for SuggestStarsRequest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", super::to_string(self))
     }
 }
 
@@ -190,24 +193,23 @@ impl<'a> SuggestStarsRequest<'a> {
 mod tests {
     use std::borrow::Cow;
     use crate::request::account::AuthenticatedUser;
-    use crate::request::AuthenticatedUser;
     use crate::request::moderator::{SuggestedFeatureScore, SuggestedStars, SuggestStarsRequest};
-
-    const TEST_AUTHENTICATED_USER: AuthenticatedUser = AuthenticatedUser::new(
-        "Ryder",
-        57903,
-        Cow::Borrowed("UmVkaXNuZU1FQXJFREdlTnRJQw==")
-    );
 
     #[test]
     fn serialize_suggest_stars_request() {
-        let request = SuggestStarsRequest::new(TEST_AUTHENTICATED_USER, 96457938)
+        let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
+            "Ryder",
+            57903,
+            Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
+        );
+
+        let request = SuggestStarsRequest::new(test_authenticated_user, 96457938)
             .stars(SuggestedStars::Ten)
             .feature(SuggestedFeatureScore::Featured);
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&levelID=96457938&stars=10&feature=1&gdw=0"
+            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=Ryder&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&levelID=96457938&stars=10&feature=1&gdw=0"
         );
     }
 }

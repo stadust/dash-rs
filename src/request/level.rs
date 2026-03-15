@@ -598,7 +598,7 @@ impl Serialize for DemonFilter {
             DemonRating::Extreme => 5,
         };
 
-        serializer.serialize_i8(numerical_value)
+        serializer.serialize_i32(numerical_value)
     }
 }
 
@@ -621,7 +621,7 @@ impl Serialize for LengthFilter {
             LevelLength::Platformer => 5,
         };
 
-        serializer.serialize_u8(numerical_value)
+        serializer.serialize_i32(numerical_value)
     }
 }
 
@@ -647,7 +647,7 @@ impl Serialize for RatingFilter {
                                           * -2 means "search for any demon, regardless of difficulty" */
         };
 
-        serializer.serialize_i8(numerical_value)
+        serializer.serialize_i32(numerical_value)
     }
 }
 

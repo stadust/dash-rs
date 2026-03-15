@@ -57,6 +57,13 @@ impl<'a> UserRequest<'a> {
         super::to_string(&self)
     }
 }
+
+impl From<u64> for UserRequest<'_> {
+    fn from(user_id: u64) -> Self {
+        UserRequest::new(user_id)
+    }
+}
+
 impl From<Creator<'_>> for UserRequest<'_> {
     fn from(creator: Creator<'_>) -> Self {
         UserRequest::from(creator.user_id)
@@ -131,15 +138,15 @@ mod tests {
     use crate::request::account::AuthenticatedUser;
     use crate::request::user::{UserRequest, UserSearchRequest};
 
-    const TEST_AUTHENTICATED_USER: AuthenticatedUser = AuthenticatedUser::new(
-        "Ryder",
-        57903,
-        Cow::Borrowed("UmVkaXNuZU1FQXJFREdlTnRJQw==")
-    );
-
     #[test]
     fn serialize_user_request() {
-        let request = UserRequest::with_authenticated_user(TEST_AUTHENTICATED_USER, 57903);
+        let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
+            "Ryder",
+            57903,
+            Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
+        );
+
+        let request = UserRequest::with_authenticated_user(test_authenticated_user, 57903);
 
         assert_eq!(
             request.to_string(),

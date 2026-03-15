@@ -28,21 +28,17 @@ use crate::{
     util, Dash, GJFormat, SerError,
 };
 use flate2::Compression;
-use crate::model::level::local_level::LevelMetadata;
-// use flate2::read::GzDecoder;
-// use std::io::Read;
 
 mod internal;
-pub mod local_level;
 pub mod object;
-pub mod online_level;
+pub mod metadata;
 
 /// Enum representing the possible level lengths known to dash-rs
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum LevelLength {
     /// Enum variant that's used by the [`From<i32>`](From) impl for when an
     /// unrecognized value is passed
-    Unknown(u8),
+    Unknown(i32),
 
     /// Tiny
     ///
@@ -92,7 +88,7 @@ pub enum LevelLength {
 pub enum LevelRating {
     /// Enum variant that's used by the [`From<i8>`](From) impl for when an
     /// unrecognized value is passed
-    Unknown(i8),
+    Unknown(i32),
 
     /// Not Available, sometimes referred to as `N/A` or `NA`
     ///
@@ -160,8 +156,8 @@ impl LevelRating {
     }
 }
 
-impl From<i8> for LevelRating {
-    fn from(i: i8) -> Self {
+impl From<i32> for LevelRating {
+    fn from(i: i32) -> Self {
         match i {
             -3 => LevelRating::Auto,
             -2 => LevelRating::Demon(DemonRating::Hard),
@@ -176,7 +172,7 @@ impl From<i8> for LevelRating {
     }
 }
 
-impl From<LevelRating> for i8 {
+impl From<LevelRating> for i32 {
     fn from(rating: LevelRating) -> Self {
         match rating {
             LevelRating::Auto => -3,
@@ -667,19 +663,17 @@ pub struct Level<'a, Data = LevelData<'a>, Song = Option<u64>, User = u64> {
     /// in version 2.1 or later. For all older levels this is always `None`
     pub object_amount: Option<u32>,
 
-    /// According to the GDPS source this is always `1`, although that is
-    /// evidently wrong
+    /// The total number of seconds spent on this copy of a level
     ///
     /// ## GD Internals:
-    /// This value is provided at index `46` and seems to be an integer
-    pub index_46: Option<Cow<'a, str>>,
+    /// This value is provided at index `46` and is an integer
+    pub editor_time: u32,
 
-    /// According to the GDPS source, this is always `2`, although that is
-    /// evidently wrong
+    /// The cumulative total of seconds spent on previous copies of the level
     ///
     /// ## GD Internals:
-    /// This value is provided at index `47` and seems to be an integer
-    pub index_47: Option<Cow<'a, str>>,
+    /// This value is provided at index `47` and is an integer
+    pub editor_time_copies: Option<u32>,
 
     /// Additional data about this level that can be retrieved by downloading the level.
     ///
@@ -718,8 +712,8 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             stars_requested: self.stars_requested,
             is_epic: self.is_epic,
             object_amount: self.object_amount,
-            index_46: self.index_46,
-            index_47: self.index_47,
+            editor_time: self.editor_time,
+            editor_time_copies: self.editor_time_copies,
         }
     }
 
@@ -747,8 +741,8 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             stars_requested: self.stars_requested,
             is_epic: self.is_epic,
             object_amount: self.object_amount,
-            index_46: self.index_46,
-            index_47: self.index_47,
+            editor_time: self.editor_time,
+            editor_time_copies: self.editor_time_copies,
             level_data: self.level_data,
         }
     }
@@ -777,8 +771,8 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             stars_requested: self.stars_requested,
             is_epic: self.is_epic,
             object_amount: self.object_amount,
-            index_46: self.index_46,
-            index_47: self.index_47,
+            editor_time: self.editor_time,
+            editor_time_copies: self.editor_time_copies,
             level_data: self.level_data,
         }
     }
@@ -825,19 +819,38 @@ pub struct LevelData<'a> {
     /// This value is provided at index `29`
     pub time_since_update: Cow<'a, str>,
 
-    /// According to the GDPS source, this is a value called `extraString`
+    /// The extraString passed when uploading the level. Its use is currently unknown
     ///
     /// ## GD Internals:
     /// This value is provided at index `36`
-    pub index_36: Cow<'a, str>,
+    pub extra_string: Cow<'a, str>,
 
-    pub index_40: Cow<'a, str>,
+    /// Whether this level has a low detail mode option
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `40`
+    pub low_detail_mode: bool,
 
-    pub index_52: Cow<'a, str>,
+    /// The comma separated list of all song IDs used in the level
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `52`
+    /// TODO: Parse into a List
+    pub song_ids: Cow<'a, str>,
 
-    pub index_53: Cow<'a, str>,
+    /// The comma separated list of all sfx IDs used in the level
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `52`
+    /// TODO: Parse into a List
+    pub sfx_ids: Cow<'a, str>,
 
-    pub index_57: Cow<'a, str>,
+    /// The amount of time spent verifying the level in frames assuming 240FPS
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `52`
+    /// TODO: Figure out how to parse thise
+    pub verification_time: Cow<'a, str>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -920,7 +933,7 @@ impl ThunkProcessor for Objects {
             .map_err(|err| LevelProcessError::Deserialize(err.to_string()))
     }
 
-    fn as_unprocessed(processed: &Objects) -> Result<Cow<str>, LevelProcessError> {
+    fn as_unprocessed(processed: &Objects) -> Result<Cow<'_, str>, LevelProcessError> {
         let mut bytes = Vec::new();
 
         processed.meta.write_gj(&mut bytes)?;

@@ -72,15 +72,10 @@ pub const URL_FORM_ENCODED: &str = "application/x-www-form-urlencoded";
 
 /// A `BaseRequest` instance that has all its fields set to the
 /// same values a Geometry Dash 2.1 client would use
-pub const GD_21: BaseRequest = BaseRequest::new(
-    GameVersion::Version { major: 2, minor: 1 },
-    GameVersion::Version { major: 3, minor: 3 },
-    SECRET,
-);
 
-pub const MODERATOR_GD_21: BaseRequest = BaseRequest::new(
-    GameVersion::Version { major: 2, minor: 1 },
-    GameVersion::Version { major: 3, minor: 3 },
+pub const MODERATOR_GD_22: BaseRequest = BaseRequest::new(
+    GameVersion::Version { major: 2, minor: 2 },
+    GameVersion::Version { major: 3, minor: 8 },
     MODERATOR_SECRET,
 );
 
@@ -89,7 +84,7 @@ pub const MODERATOR_GD_21: BaseRequest = BaseRequest::new(
 pub const GD_22: BaseRequest = BaseRequest::new(
     GameVersion::Version { major: 2, minor: 2 },
     GameVersion::Version { major: 3, minor: 8 },
-    "Wmfd2893gb7",
+    SECRET,
 );
 
 /// Base data included in every request made

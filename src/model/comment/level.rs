@@ -9,7 +9,6 @@ use crate::{
     serde::{Base64Decoder, Thunk},
     GJFormat, ProcessError, ThunkProcessor,
 };
-use crate::model::RobtopForm;
 
 #[derive(Debug, Eq, VariantPartialEq, Clone, Deserialize, Serialize, Dash)]
 pub struct LevelComment<'a> {
@@ -18,10 +17,8 @@ pub struct LevelComment<'a> {
     #[dash(no_index)]
     pub user: Option<CommentUser<'a>>,
 
-    /// The id of the the level that this [`CommentEntry`] was posted to
-    ///
-    /// ## GD Internals
-    /// This value is provided at index `1`
+    /// The id of the level that this [`CommentEntry`] was posted to
+    #[dash(index = 1)]
     pub level_id: Option<u64>,
 
     /// The actual content of the [`LevelComment`] made.
@@ -79,7 +76,7 @@ impl ThunkProcessor for Color {
     type Error = ProcessError;
     type Output<'a> = Color;
 
-    fn from_unprocessed(unprocessed: Cow<str>) -> Result<Self::Output<'_>, Self::Error> {
+    fn from_unprocessed(unprocessed: Cow<'_, str>) -> Result<Self::Output<'_>, Self::Error> {
         let mut split = unprocessed.split(',');
 
         let r = split.next();
