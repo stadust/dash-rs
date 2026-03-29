@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use dash_rs::{
