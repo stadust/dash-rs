@@ -687,7 +687,7 @@ mod tests {
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&levelID=17448979&inc=0&extra=0"
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&levelID=17448979&inc=0&extra=0"
         );
     }
 }

@@ -25,7 +25,6 @@ dash-rs-derive = { path = "dash-rs-derive" }
 # benchmark
 env_logger = "0.10.1"
 criterion = "0.5.1"
-dotenv = "0.15.0"
 
 # Dependencies used by examples
 reqwest = "0.11.17"
@@ -35,7 +34,6 @@ pretty_assertions = "1.4.0"
 
 [build-dependencies]
 serde = {version = "1.0.104", features = ["derive"]}
-serde_yaml = "0.9.29"
 
 [[bench]]
 name = "level_processing_benchmark"

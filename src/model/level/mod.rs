@@ -188,6 +188,58 @@ impl From<LevelRating> for i32 {
     }
 }
 
+/// Enum representing the possible Epic ratings
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum EpicRating {
+    /// Not Epic, this means the level is unrated, rate only or Featured
+    ///
+    /// ## GD Internals:
+    /// This variant is represented by the value `0` in response
+    None,
+
+    /// ## GD Internals:
+    /// This variant is represented by the value `1` in response
+    Epic,
+
+    /// ## GD Internals:
+    /// This variant is represented by the value `2` in response
+    Legendary,
+
+    /// ## GD Internals:
+    /// This variant is represented by the value `3` in response
+    Mythic,
+
+    /// Enum variant that's used by the [`From<i8>`](From) impl for when an
+    /// unrecognized value is passed
+    Unknown(i32),
+}
+
+impl From<i32> for EpicRating {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => EpicRating::None,
+            1 => EpicRating::Epic,
+            2 => EpicRating::Legendary,
+            3 => EpicRating::Mythic,
+            _ => EpicRating::Unknown(i)
+        }
+    }
+}
+
+impl From<EpicRating> for i32 {
+    fn from(rating: EpicRating) -> Self {
+        match rating {
+            EpicRating::None => 0,
+            EpicRating::Epic => 1,
+            EpicRating::Legendary => 2,
+            EpicRating::Mythic => 3,
+            EpicRating::Unknown(inner) => inner
+        }
+    }
+}
+
+crate::into_conversion!(EpicRating, i32);
+
 /// Enum representing the possible demon difficulties
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum DemonRating {
@@ -648,11 +700,11 @@ pub struct Level<'a, Data = LevelData<'a>, Song = Option<u64>, User = u64> {
     /// were requested
     pub stars_requested: Option<u8>,
 
-    /// Value indicating whether this [`Level`] is epic
+    /// Value indicating which Epic level this [`Level`] is
     ///
     /// ## GD Internals:
     /// This value is provided at index `42`, as an integer
-    pub is_epic: bool,
+    pub epic: EpicRating,
 
     /// The amount of objects in this [`Level`]. Note that a value of `None` _does not_ mean
     /// that there are no objects in the level, but rather that the server's didn't provide an
@@ -710,7 +762,7 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             coin_amount: self.coin_amount,
             coins_verified: self.coins_verified,
             stars_requested: self.stars_requested,
-            is_epic: self.is_epic,
+            epic: self.epic,
             object_amount: self.object_amount,
             editor_time: self.editor_time,
             editor_time_copies: self.editor_time_copies,
@@ -739,7 +791,7 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             coin_amount: self.coin_amount,
             coins_verified: self.coins_verified,
             stars_requested: self.stars_requested,
-            is_epic: self.is_epic,
+            epic: self.epic,
             object_amount: self.object_amount,
             editor_time: self.editor_time,
             editor_time_copies: self.editor_time_copies,
@@ -769,7 +821,7 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             coin_amount: self.coin_amount,
             coins_verified: self.coins_verified,
             stars_requested: self.stars_requested,
-            is_epic: self.is_epic,
+            epic: self.epic,
             object_amount: self.object_amount,
             editor_time: self.editor_time,
             editor_time_copies: self.editor_time_copies,
@@ -841,7 +893,7 @@ pub struct LevelData<'a> {
     /// The comma separated list of all sfx IDs used in the level
     ///
     /// ## GD Internals:
-    /// This value is provided at index `52`
+    /// This value is provided at index `53`
     /// TODO: Parse into a List
     pub sfx_ids: Cow<'a, str>,
 
@@ -849,8 +901,8 @@ pub struct LevelData<'a> {
     ///
     /// ## GD Internals:
     /// This value is provided at index `52`
-    /// TODO: Figure out how to parse thise
-    pub verification_time: Cow<'a, str>,
+    /// TODO: Figure out how to parse this
+    pub verification_time: u32,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

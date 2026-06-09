@@ -431,7 +431,7 @@ mod tests {
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&count=2&mode=0&userID=159782398"
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&total=0&page=0&count=2&mode=0&userID=159782398"
         );
     }
 
@@ -443,8 +443,8 @@ mod tests {
         }
 
         let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
-            "Ryder",
-            57903,
+            "TestUser",
+            472634,
             Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
         );
         let request = UploadCommentRequest::new(test_authenticated_user, 85179632)
@@ -453,7 +453,7 @@ mod tests {
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=Ryder&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&comment=VGhpcyBpcyBhIHRlc3QgY29tbWVudA==&levelID=85179632&percent=56&chk=UQsGAAEACgQBVQBaAwoGVwtSDQIEWAYOUFEAVQoIBVtWDwEHDQEJVA=="
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&comment=VGhpcyBpcyBhIHRlc3QgY29tbWVudA==&levelID=85179632&percent=56&chk=UQsGAAEACgQBVQBaAwoGVwtSDQIEWAYOUFEAVQoIBVtWDwEHDQEJVA=="
         );
     }
 
@@ -465,15 +465,15 @@ mod tests {
         }
 
         let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
-            "Ryder",
-            57903,
+            "TestUser",
+            472634,
             Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
         );
         let request = DeleteCommentRequest::new(test_authenticated_user, 85179632, 7000000);
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&commentID=7000000&levelID=85179632"
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&commentID=7000000&levelID=85179632"
         );
     }
 }

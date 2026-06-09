@@ -54,3 +54,11 @@ pub fn type_contains_lifetime(ty: &Type) -> bool {
         _ => todo!(),
     }
 }
+
+pub fn is_option_type(ty: &Type) -> bool {
+    let Type::Path(type_path) = ty else { return false };
+    // Match Option / std::option::Option / core::option::Option
+    type_path.path.segments.last()
+        .map(|seg| seg.ident == "Option")
+        .unwrap_or(false)
+}

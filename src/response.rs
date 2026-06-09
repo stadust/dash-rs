@@ -103,7 +103,7 @@ pub fn parse_get_gj_levels_response(response: &str) -> Result<Vec<ListedLevel<'_
                 coin_amount: level.coin_amount,
                 coins_verified: false,
                 stars_requested: level.stars_requested,
-                is_epic: level.is_epic,
+                epic: level.epic,
                 object_amount: level.object_amount,
                 editor_time: level.editor_time,
                 editor_time_copies: level.editor_time_copies,
@@ -167,7 +167,7 @@ pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment
         .collect()
 }
 
-pub fn parse_get_gj_acccount_comments_response(response: &str) -> Result<Vec<ProfileComment<'_>>, ResponseError<'_>> {
+pub fn parse_get_gj_account_comments_response(response: &str) -> Result<Vec<ProfileComment<'_>>, ResponseError<'_>> {
     check_response_errors(response)?;
 
     let mut sections = response.split('#');

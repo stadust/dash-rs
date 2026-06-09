@@ -62,7 +62,7 @@ struct InternalLevel<'src> {
     #[serde(rename = "39")]
     index_39: Option<u8>,
     #[serde(rename = "42")]
-    index_42: bool,
+    index_42: i32,
     #[serde(rename = "43")]
     index_43: u8,
     #[serde(with = "crate::util::default_to_none")]
@@ -100,7 +100,7 @@ struct InternalLevel<'src> {
     index_53: Option<&'src str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "57")]
-    index_57: Option<&'src str>,
+    index_57: Option<u32>,
 }
 
 impl<'de> Dash<'de> for Level<'de, (), Option<u64>, u64> {
@@ -125,7 +125,7 @@ impl<'de> Dash<'de> for Level<'de, (), Option<u64>, u64> {
             coin_amount: InternalProxy::from_deserialize_proxy(internal.index_37),
             coins_verified: InternalProxy::from_deserialize_proxy(internal.index_38),
             stars_requested: InternalProxy::from_deserialize_proxy(internal.index_39),
-            is_epic: InternalProxy::from_deserialize_proxy(internal.index_42),
+            epic: InternalProxy::from_deserialize_proxy(internal.index_42),
             object_amount: InternalProxy::from_deserialize_proxy(internal.index_45),
             editor_time: InternalProxy::from_deserialize_proxy(internal.index_46),
             editor_time_copies: InternalProxy::from_deserialize_proxy(internal.index_47),
@@ -170,7 +170,7 @@ impl<'de> Dash<'de> for Level<'de, (), Option<u64>, u64> {
             index_37: self.coin_amount.to_serialize_proxy(),
             index_38: self.coins_verified.to_serialize_proxy(),
             index_39: self.stars_requested.to_serialize_proxy(),
-            index_42: self.is_epic.to_serialize_proxy(),
+            index_42: self.epic.to_serialize_proxy(),
             index_45: self.object_amount.to_serialize_proxy(),
             index_46: self.editor_time.to_serialize_proxy(),
             index_47: self.editor_time_copies.to_serialize_proxy(),
@@ -206,14 +206,21 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
     fn dash_deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let internal = InternalLevel::deserialize(deserializer)?;
 
-        let level_data = match (internal.index_4, internal.index_27, internal.index_28, internal.index_29) {
-            (Some(idx4), Some(idx27), Some(idx28), Some(idx29)) => LevelData {
+        let level_data = match (
+            internal.index_4,
+            internal.index_27,
+            internal.index_28,
+            internal.index_29,
+            internal.index_36,
+            internal.index_40
+        ) {
+            (Some(idx4), Some(idx27), Some(idx28), Some(idx29), Some(idx36), Some(idx40)) => LevelData {
                 level_data: InternalProxy::from_deserialize_proxy(idx4),
                 password: InternalProxy::from_deserialize_proxy(idx27),
                 time_since_upload: InternalProxy::from_deserialize_proxy(idx28),
                 time_since_update: InternalProxy::from_deserialize_proxy(idx29),
-                extra_string: InternalProxy::from_deserialize_proxy(internal.index_36.unwrap_or_default()),
-                low_detail_mode: InternalProxy::from_deserialize_proxy(internal.index_40.unwrap_or_default()),
+                extra_string: InternalProxy::from_deserialize_proxy(idx36),
+                low_detail_mode: InternalProxy::from_deserialize_proxy(idx40),
                 song_ids: InternalProxy::from_deserialize_proxy(internal.index_52.unwrap_or_default()),
                 sfx_ids: InternalProxy::from_deserialize_proxy(internal.index_53.unwrap_or_default()),
                 verification_time: InternalProxy::from_deserialize_proxy(internal.index_57.unwrap_or_default()),
@@ -239,7 +246,7 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
             coin_amount: InternalProxy::from_deserialize_proxy(internal.index_37),
             coins_verified: InternalProxy::from_deserialize_proxy(internal.index_38),
             stars_requested: InternalProxy::from_deserialize_proxy(internal.index_39),
-            is_epic: InternalProxy::from_deserialize_proxy(internal.index_42),
+            epic: InternalProxy::from_deserialize_proxy(internal.index_42),
             object_amount: InternalProxy::from_deserialize_proxy(internal.index_45),
             editor_time: InternalProxy::from_deserialize_proxy(internal.index_46),
             editor_time_copies: InternalProxy::from_deserialize_proxy(internal.index_47),
@@ -287,7 +294,7 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
             index_37: self.coin_amount.to_serialize_proxy(),
             index_38: self.coins_verified.to_serialize_proxy(),
             index_39: self.stars_requested.to_serialize_proxy(),
-            index_42: self.is_epic.to_serialize_proxy(),
+            index_42: self.epic.to_serialize_proxy(),
             index_45: self.object_amount.to_serialize_proxy(),
             index_46: self.editor_time.to_serialize_proxy(),
             index_47: self.editor_time_copies.to_serialize_proxy(),

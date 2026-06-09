@@ -198,8 +198,8 @@ mod tests {
     #[test]
     fn serialize_suggest_stars_request() {
         let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
-            "Ryder",
-            57903,
+            "TestUser",
+            472634,
             Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
         );
 
@@ -209,7 +209,7 @@ mod tests {
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=Ryder&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&levelID=96457938&stars=10&feature=1&gdw=0"
+            "gameVersion=22&binaryVersion=38&secret=Wmfp3879gc3&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&levelID=96457938&stars=10&feature=1&gdw=0"
         );
     }
 }

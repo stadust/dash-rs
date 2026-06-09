@@ -6,7 +6,7 @@ use std::{
     marker::PhantomData,
     path::{Path, PathBuf},
 };
-
+use std::collections::BTreeSet;
 use dash_rs::{GJFormat, IndexedDeserializer};
 use pretty_assertions::assert_eq;
 use serde::Deserialize;
@@ -114,11 +114,26 @@ fn assert_indexed_strings_equal<'a, D: GJFormat<'a>>(a: &str, b: &str) {
         let map_b = BTreeMap::<&str, &str>::deserialize(&mut deserializer_b).unwrap();
 
         // BTreeMap + pretty_assertions will make sure that this is easily interpretable
-        assert_eq!(map_a, map_b);
+        assert_maps_equal(&map_a, &map_b);
     } else {
         let vec_a = Vec::<&str>::deserialize(&mut deserializer_a).unwrap();
         let vec_b = Vec::<&str>::deserialize(&mut deserializer_b).unwrap();
 
         assert_eq!(vec_a, vec_b);
+    }
+}
+
+/// This functions asserts equality on maps and ignores missing indexes or indexes with empty values
+/// This is because for some reason Rob chose to omit the LevelID index and value completely if
+/// a level/list comment instead of just returning the index with no values as he does
+/// literally everywhere else
+fn assert_maps_equal(left: &BTreeMap<&str, &str>, right: &BTreeMap<&str, &str>) {
+    let all_keys: BTreeSet<&str> = left.keys().chain(right.keys()).copied().collect();
+
+    for key in all_keys {
+        let l = left.get(key).filter(|v| !v.is_empty());
+        let r = right.get(key).filter(|v| !v.is_empty());
+
+        assert_eq!(l, r, "mismatch at index {key}");
     }
 }

@@ -20,10 +20,10 @@
   "coin_amount": 0,
   "coins_verified": false,
   "stars_requested": null,
-  "is_epic": false,
+  "epic": "None",
   "object_amount": 7092,
-  "index_46": "113",
-  "index_47": "0",
+  "editor_time": 113,
+  "editor_time_copies": 0,
   "level_data": {
     "level_data": {
       "meta": {
@@ -63969,10 +63969,10 @@
     "password": 3101,
     "time_since_upload": "10 years",
     "time_since_update": "4 years",
-    "index_36": "0_167_67_0_0_0_0_207_0_0_89_88_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0",
-    "index_40": "0",
-    "index_52": "",
-    "index_53": "",
-    "index_57": "0"
+    "extra_string": "0_167_67_0_0_0_0_207_0_0_89_88_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0",
+    "low_detail_mode": false,
+    "song_ids": "1234, 3456",
+    "sfx_ids": "5678, 9348",
+    "verification_time": 0
   }
 }

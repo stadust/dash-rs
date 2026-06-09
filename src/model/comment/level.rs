@@ -18,8 +18,11 @@ pub struct LevelComment<'a> {
     pub user: Option<CommentUser<'a>>,
 
     /// The id of the level that this [`CommentEntry`] was posted to
+    /// This value is negative if it was posted on a list
+    /// This value is only returned on Comment History responses
     #[dash(index = 1)]
-    pub level_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level_id: Option<i64>,
 
     /// The actual content of the [`LevelComment`] made.
     #[dash(index = 2)]
@@ -35,7 +38,8 @@ pub struct LevelComment<'a> {
     #[dash(index = 4)]
     pub likes: i32,
 
-    /// The unique id of this [`LevelComment`]. Additionally, there is also no [`ProfileComment`](crate::model::comment::profile::ProfileComment)
+    /// The unique id of this [`LevelComment`]. Additionally,
+    /// there is also no [`ProfileComment`](crate::model::comment::profile::ProfileComment)
     /// with this id
     #[dash(index = 6)]
     pub comment_id: u64,

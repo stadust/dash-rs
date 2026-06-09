@@ -141,8 +141,8 @@ mod tests {
     #[test]
     fn serialize_user_request() {
         let test_authenticated_user: AuthenticatedUser = AuthenticatedUser::new(
-            "Ryder",
-            57903,
+            "TestUser",
+            472634,
             Cow::Borrowed("VGhpc0lzQUZha2VQYXNzd29yZA==")
         );
 
@@ -150,17 +150,17 @@ mod tests {
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&targetAccountID=57903"
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&userName=TestUser&accountID=472634&gjp=VGhpc0lzQUZha2VQYXNzd29yZA==&targetAccountID=57903"
         );
     }
 
     #[test]
     fn serialize_user_search_request() {
-        let request = UserSearchRequest::new("Ryder");
+        let request = UserSearchRequest::new("TestUser");
 
         assert_eq!(
             request.to_string(),
-            "gameVersion=21&binaryVersion=33&secret=Wmfd2893gb7&total=0&page=0&str=Ryder"
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&total=0&page=0&str=TestUser"
         );
     }
 }

@@ -68,15 +68,22 @@ impl OneToOne {
         format_ident!("index_{}", self.index())
     }
 
-    fn field_tokens(&self, ty: Type) -> proc_macro2::TokenStream {
+    fn field_tokens(&self, ty: Type) -> TokenStream {
         let serde_name = self.index();
         let field_name = self.internal_name();
         let passthrough = &self.passthrough;
 
+        // If the API type is Option<T>, a missing key should deserialize as None
+        let default_attr = if utils::is_option_type(&self.api_type) {
+            quote! { #[serde(default)] }
+        } else {
+            quote! {}
+        };
         if utils::type_contains_lifetime(&ty) {
             quote! {
                 #[serde(rename = #serde_name)]
                 #[serde(borrow)]
+                #default_attr
                 #(
                     #[serde(#passthrough)]
                 )*
@@ -85,6 +92,7 @@ impl OneToOne {
         } else {
             quote! {
                 #[serde(rename = #serde_name)]
+                #default_attr
                 #(
                     #[serde(#passthrough)]
                 )*
@@ -93,15 +101,15 @@ impl OneToOne {
         }
     }
 
-    pub fn ser_field_tokens(&self, lifetime: &Lifetime) -> proc_macro2::TokenStream {
+    pub fn ser_field_tokens(&self, lifetime: &Lifetime) -> TokenStream {
         self.field_tokens(self.ser_type(lifetime))
     }
 
-    pub fn de_field_tokens(&self) -> proc_macro2::TokenStream {
+    pub fn de_field_tokens(&self) -> TokenStream {
         self.field_tokens(self.de_type())
     }
 
-    pub fn serialize(&self) -> proc_macro2::TokenStream {
+    pub fn serialize(&self) -> TokenStream {
         let field_name = self.internal_name();
         let field = &self.field;
 
@@ -110,7 +118,7 @@ impl OneToOne {
         }
     }
 
-    pub fn deserialize(&self) -> proc_macro2::TokenStream {
+    pub fn deserialize(&self) -> TokenStream {
         let field_name = self.internal_name();
         let field = &self.field;
         let api_type = &self.api_type;
