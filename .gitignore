@@ -2,3 +2,5 @@ target
 .idea
 Cargo.lock
 *.iml
+*.env
+*.DS_Store

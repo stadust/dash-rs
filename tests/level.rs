@@ -51,7 +51,13 @@ impl framework::Testable for FullLevelTester {
 
 #[test]
 fn test_full_level() {
-    let units = load_test_units::<FullLevelTester>(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("artifacts").join("level"));
+    let units = load_test_units::<FullLevelTester>(
+        Path::new(env!("CARGO_MANIFEST_DIR")
+        )
+            .join("tests")
+            .join("artifacts")
+            .join("level")
+    );
 
     for (path, unit) in units {
         println!("Testing case {:?}", path);

@@ -1,4 +1,4 @@
-//! Module containing structs modelling Geometry Dash levels as they are returned from the boomlings
+//! Module containing structs modelling Geometry Dash levels as they are returned from the Boomlings
 //! servers
 
 use itoa::Buffer;
@@ -29,12 +29,9 @@ use crate::{
 };
 use flate2::Compression;
 
-// use flate2::read::GzDecoder;
-// use std::io::Read;
-
 mod internal;
-pub mod metadata;
 pub mod object;
+pub mod metadata;
 
 /// Enum representing the possible level lengths known to dash-rs
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -89,7 +86,7 @@ pub enum LevelLength {
 /// Enum representing the possible level ratings
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum LevelRating {
-    /// Enum variant that's used by the [`From<i32>`](From) impl for when an
+    /// Enum variant that's used by the [`From<i8>`](From) impl for when an
     /// unrecognized value is passed
     Unknown(i32),
 
@@ -159,6 +156,90 @@ impl LevelRating {
     }
 }
 
+impl From<i32> for LevelRating {
+    fn from(i: i32) -> Self {
+        match i {
+            -3 => LevelRating::Auto,
+            -2 => LevelRating::Demon(DemonRating::Hard),
+            -1 => LevelRating::NotAvailable,
+            10 => LevelRating::Easy,
+            20 => LevelRating::Normal,
+            30 => LevelRating::Hard,
+            40 => LevelRating::Harder,
+            50 => LevelRating::Insane,
+            _ => LevelRating::Unknown(i)
+        }
+    }
+}
+
+impl From<LevelRating> for i32 {
+    fn from(rating: LevelRating) -> Self {
+        match rating {
+            LevelRating::Auto => -3,
+            LevelRating::Demon(_) => -2,
+            LevelRating::NotAvailable => -1,
+            LevelRating::Easy => 10,
+            LevelRating::Normal => 20,
+            LevelRating::Hard => 30,
+            LevelRating::Harder => 40,
+            LevelRating::Insane => 50,
+            LevelRating::Unknown(inner) => inner
+        }
+    }
+}
+
+/// Enum representing the possible Epic ratings
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum EpicRating {
+    /// Not Epic, this means the level is unrated, rate only or Featured
+    ///
+    /// ## GD Internals:
+    /// This variant is represented by the value `0` in response
+    None,
+
+    /// ## GD Internals:
+    /// This variant is represented by the value `1` in response
+    Epic,
+
+    /// ## GD Internals:
+    /// This variant is represented by the value `2` in response
+    Legendary,
+
+    /// ## GD Internals:
+    /// This variant is represented by the value `3` in response
+    Mythic,
+
+    /// Enum variant that's used by the [`From<i8>`](From) impl for when an
+    /// unrecognized value is passed
+    Unknown(i32),
+}
+
+impl From<i32> for EpicRating {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => EpicRating::None,
+            1 => EpicRating::Epic,
+            2 => EpicRating::Legendary,
+            3 => EpicRating::Mythic,
+            _ => EpicRating::Unknown(i)
+        }
+    }
+}
+
+impl From<EpicRating> for i32 {
+    fn from(rating: EpicRating) -> Self {
+        match rating {
+            EpicRating::None => 0,
+            EpicRating::Epic => 1,
+            EpicRating::Legendary => 2,
+            EpicRating::Mythic => 3,
+            EpicRating::Unknown(inner) => inner
+        }
+    }
+}
+
+crate::into_conversion!(EpicRating, i32);
+
 /// Enum representing the possible demon difficulties
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum DemonRating {
@@ -202,6 +283,32 @@ pub enum DemonRating {
     Extreme,
 }
 
+impl From<i32> for DemonRating{
+    fn from(i: i32) -> Self {
+        match i {
+            10 => DemonRating::Easy,
+            20 => DemonRating::Medium,
+            30 => DemonRating::Hard,
+            40 => DemonRating::Insane,
+            50 => DemonRating::Extreme,
+            _ => DemonRating::Unknown(i)
+        }
+    }
+}
+
+impl From<DemonRating> for i32{
+    fn from(rating: DemonRating) -> Self {
+        match rating {
+            DemonRating::Easy => 10,
+            DemonRating::Medium => 20,
+            DemonRating::Hard => 30,
+            DemonRating::Insane => 40,
+            DemonRating::Extreme => 50,
+            DemonRating::Unknown(inner) => inner
+        }
+    }
+}
+
 /// Enum representing a levels featured state
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(from = "i32", into = "i32")]
@@ -231,11 +338,11 @@ pub enum Featured {
 }
 
 impl From<i32> for Featured {
-    fn from(int: i32) -> Self {
-        match int {
+    fn from(i: i32) -> Self {
+        match i {
             -1 => Featured::Unfeatured,
             0 => Featured::NotFeatured,
-            _ => Featured::Featured(int as u32),
+            _ => Featured::Featured(i as u32),
         }
     }
 }
@@ -293,8 +400,8 @@ pub enum Password {
 
 impl Serialize for Password {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
+        where
+            S: Serializer,
     {
         match self {
             Password::NoCopy => serializer.serialize_none(),
@@ -306,8 +413,8 @@ impl Serialize for Password {
 
 impl<'de> Deserialize<'de> for Password {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
+        where
+            D: Deserializer<'de>,
     {
         let level_password = <Option<i32>>::deserialize(deserializer)?;
 
@@ -593,11 +700,11 @@ pub struct Level<'a, Data = LevelData<'a>, Song = Option<u64>, User = u64> {
     /// were requested
     pub stars_requested: Option<u8>,
 
-    /// Value indicating whether this [`Level`] is epic
+    /// Value indicating which Epic level this [`Level`] is
     ///
     /// ## GD Internals:
     /// This value is provided at index `42`, as an integer
-    pub is_epic: bool,
+    pub epic: EpicRating,
 
     /// The amount of objects in this [`Level`]. Note that a value of `None` _does not_ mean
     /// that there are no objects in the level, but rather that the server's didn't provide an
@@ -608,19 +715,17 @@ pub struct Level<'a, Data = LevelData<'a>, Song = Option<u64>, User = u64> {
     /// in version 2.1 or later. For all older levels this is always `None`
     pub object_amount: Option<u32>,
 
-    /// According to the GDPS source this is always `1`, although that is
-    /// evidently wrong
+    /// The total number of seconds spent on this copy of a level
     ///
     /// ## GD Internals:
-    /// This value is provided at index `46` and seems to be an integer
-    pub index_46: Option<Cow<'a, str>>,
+    /// This value is provided at index `46` and is an integer
+    pub editor_time: u32,
 
-    /// According to the GDPS source, this is always `2`, although that is
-    /// evidently wrong
+    /// The cumulative total of seconds spent on previous copies of the level
     ///
     /// ## GD Internals:
-    /// This value is provided at index `47` and seems to be an integer
-    pub index_47: Option<Cow<'a, str>>,
+    /// This value is provided at index `47` and is an integer
+    pub editor_time_copies: Option<u32>,
 
     /// Additional data about this level that can be retrieved by downloading the level.
     ///
@@ -657,10 +762,10 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             coin_amount: self.coin_amount,
             coins_verified: self.coins_verified,
             stars_requested: self.stars_requested,
-            is_epic: self.is_epic,
+            epic: self.epic,
             object_amount: self.object_amount,
-            index_46: self.index_46,
-            index_47: self.index_47,
+            editor_time: self.editor_time,
+            editor_time_copies: self.editor_time_copies,
         }
     }
 
@@ -686,10 +791,10 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             coin_amount: self.coin_amount,
             coins_verified: self.coins_verified,
             stars_requested: self.stars_requested,
-            is_epic: self.is_epic,
+            epic: self.epic,
             object_amount: self.object_amount,
-            index_46: self.index_46,
-            index_47: self.index_47,
+            editor_time: self.editor_time,
+            editor_time_copies: self.editor_time_copies,
             level_data: self.level_data,
         }
     }
@@ -716,10 +821,10 @@ impl<'a, Data, Song, User> Level<'a, Data, Song, User> {
             coin_amount: self.coin_amount,
             coins_verified: self.coins_verified,
             stars_requested: self.stars_requested,
-            is_epic: self.is_epic,
+            epic: self.epic,
             object_amount: self.object_amount,
-            index_46: self.index_46,
-            index_47: self.index_47,
+            editor_time: self.editor_time,
+            editor_time_copies: self.editor_time_copies,
             level_data: self.level_data,
         }
     }
@@ -766,19 +871,38 @@ pub struct LevelData<'a> {
     /// This value is provided at index `29`
     pub time_since_update: Cow<'a, str>,
 
-    /// According to the GDPS source, this is a value called `extraString`
+    /// The extraString passed when uploading the level. Its use is currently unknown
     ///
     /// ## GD Internals:
     /// This value is provided at index `36`
-    pub index_36: Cow<'a, str>,
+    pub extra_string: Cow<'a, str>,
 
-    pub index_40: Cow<'a, str>,
+    /// Whether this level has a low detail mode option
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `40`
+    pub low_detail_mode: bool,
 
-    pub index_52: Cow<'a, str>,
+    /// The comma separated list of all song IDs used in the level
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `52`
+    /// TODO: Parse into a List
+    pub song_ids: Cow<'a, str>,
 
-    pub index_53: Cow<'a, str>,
+    /// The comma separated list of all sfx IDs used in the level
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `53`
+    /// TODO: Parse into a List
+    pub sfx_ids: Cow<'a, str>,
 
-    pub index_57: Cow<'a, str>,
+    /// The amount of time spent verifying the level in frames assuming 240FPS
+    ///
+    /// ## GD Internals:
+    /// This value is provided at index `52`
+    /// TODO: Figure out how to parse this
+    pub verification_time: u32,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -861,7 +985,7 @@ impl ThunkProcessor for Objects {
             .map_err(|err| LevelProcessError::Deserialize(err.to_string()))
     }
 
-    fn as_unprocessed(processed: &Objects) -> Result<Cow<str>, LevelProcessError> {
+    fn as_unprocessed(processed: &Objects) -> Result<Cow<'_, str>, LevelProcessError> {
         let mut bytes = Vec::new();
 
         processed.meta.write_gj(&mut bytes)?;

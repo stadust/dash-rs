@@ -10,13 +10,13 @@ use crate::{
             profile::ProfileComment,
         },
         creator::Creator,
-        level::{Level, ListedLevel},
         song::NewgroundsSong,
         user::{profile::Profile, searched::SearchedUser},
     },
     serde::GJFormat,
     DeError,
 };
+use crate::model::level::{Level, ListedLevel};
 
 // Since NoneError is not stabilized, we cannot do `impl From<NoneError> for ResponseError<'_>`, so
 // this is the next best thing
@@ -53,7 +53,7 @@ impl<'a> From<DeError<'a>> for ResponseError<'a> {
     }
 }
 
-pub fn parse_get_gj_levels_response(response: &str) -> Result<Vec<ListedLevel>, ResponseError> {
+pub fn parse_get_gj_levels_response(response: &str) -> Result<Vec<ListedLevel<'_>>, ResponseError<'_>> {
     check_response_errors(response)?;
 
     let mut sections = response.split('#');
@@ -86,6 +86,7 @@ pub fn parse_get_gj_levels_response(response: &str) -> Result<Vec<ListedLevel>, 
                 level_id: level.level_id,
                 name: level.name,
                 description: level.description,
+                level_data: level.level_data,
                 version: level.version,
                 creator,
                 difficulty: level.difficulty,
@@ -97,22 +98,21 @@ pub fn parse_get_gj_levels_response(response: &str) -> Result<Vec<ListedLevel>, 
                 stars: level.stars,
                 featured: level.featured,
                 copy_of: level.copy_of,
-                two_player: level.two_player,
+                two_player: false,
                 custom_song: song,
                 coin_amount: level.coin_amount,
-                coins_verified: level.coins_verified,
+                coins_verified: false,
                 stars_requested: level.stars_requested,
-                is_epic: level.is_epic,
+                epic: level.epic,
                 object_amount: level.object_amount,
-                index_46: level.index_46,
-                index_47: level.index_47,
-                level_data: level.level_data,
+                editor_time: level.editor_time,
+                editor_time_copies: level.editor_time_copies,
             })
         })
         .collect::<Result<_, _>>()
 }
 
-pub fn parse_download_gj_level_response(response: &str) -> Result<Level, ResponseError> {
+pub fn parse_download_gj_level_response(response: &str) -> Result<Level<'_>, ResponseError<'_>> {
     check_response_errors(response)?;
 
     let mut sections = response.split('#');
@@ -120,13 +120,13 @@ pub fn parse_download_gj_level_response(response: &str) -> Result<Level, Respons
     Ok(Level::from_gj_str(section!(sections))?)
 }
 
-pub fn parse_get_gj_user_info_response(response: &str) -> Result<Profile, ResponseError> {
+pub fn parse_get_gj_user_info_response(response: &str) -> Result<Profile<'_>, ResponseError<'_>> {
     check_response_errors(response)?;
 
     Ok(Profile::from_gj_str(response)?)
 }
 
-pub fn parse_get_gj_users_response(response: &str) -> Result<SearchedUser, ResponseError> {
+pub fn parse_get_gj_users_response(response: &str) -> Result<SearchedUser<'_>, ResponseError<'_>> {
     check_response_errors(response)?;
 
     let mut sections = response.split('#');
@@ -137,7 +137,7 @@ pub fn parse_get_gj_users_response(response: &str) -> Result<SearchedUser, Respo
     Ok(SearchedUser::from_gj_str(section!(sections))?)
 }
 
-pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment>, ResponseError> {
+pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment<'_>>, ResponseError<'_>> {
     check_response_errors(response)?;
 
     let mut sections = response.split('#');
@@ -167,7 +167,7 @@ pub fn parse_get_gj_comments_response(response: &str) -> Result<Vec<LevelComment
         .collect()
 }
 
-pub fn parse_get_gj_acccount_comments_response(response: &str) -> Result<Vec<ProfileComment>, ResponseError> {
+pub fn parse_get_gj_account_comments_response(response: &str) -> Result<Vec<ProfileComment<'_>>, ResponseError<'_>> {
     check_response_errors(response)?;
 
     let mut sections = response.split('#');
@@ -178,7 +178,7 @@ pub fn parse_get_gj_acccount_comments_response(response: &str) -> Result<Vec<Pro
         .collect()
 }
 
-fn check_response_errors(response: &str) -> Result<(), ResponseError> {
+fn check_response_errors(response: &str) -> Result<(), ResponseError<'_>> {
     if response == "-1" {
         return Err(ResponseError::NotFound);
     }

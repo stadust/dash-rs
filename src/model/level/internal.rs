@@ -62,16 +62,16 @@ struct InternalLevel<'src> {
     #[serde(rename = "39")]
     index_39: Option<u8>,
     #[serde(rename = "42")]
-    index_42: bool,
+    index_42: i32,
     #[serde(rename = "43")]
     index_43: u8,
     #[serde(with = "crate::util::default_to_none")]
     #[serde(rename = "45")]
     index_45: Option<u32>,
     #[serde(rename = "46")]
-    index_46: Option<&'src str>,
+    index_46: u32,
     #[serde(rename = "47")]
-    index_47: Option<&'src str>,
+    index_47: Option<u32>,
 
     // Only present sometimes
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -91,7 +91,7 @@ struct InternalLevel<'src> {
     index_36: Option<&'src str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "40")]
-    index_40: Option<&'src str>,
+    index_40: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "52")]
     index_52: Option<&'src str>,
@@ -100,7 +100,7 @@ struct InternalLevel<'src> {
     index_53: Option<&'src str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "57")]
-    index_57: Option<&'src str>,
+    index_57: Option<u32>,
 }
 
 impl<'de> Dash<'de> for Level<'de, (), Option<u64>, u64> {
@@ -125,10 +125,10 @@ impl<'de> Dash<'de> for Level<'de, (), Option<u64>, u64> {
             coin_amount: InternalProxy::from_deserialize_proxy(internal.index_37),
             coins_verified: InternalProxy::from_deserialize_proxy(internal.index_38),
             stars_requested: InternalProxy::from_deserialize_proxy(internal.index_39),
-            is_epic: InternalProxy::from_deserialize_proxy(internal.index_42),
+            epic: InternalProxy::from_deserialize_proxy(internal.index_42),
             object_amount: InternalProxy::from_deserialize_proxy(internal.index_45),
-            index_46: InternalProxy::from_deserialize_proxy(internal.index_46),
-            index_47: InternalProxy::from_deserialize_proxy(internal.index_47),
+            editor_time: InternalProxy::from_deserialize_proxy(internal.index_46),
+            editor_time_copies: InternalProxy::from_deserialize_proxy(internal.index_47),
 
             main_song: if internal.index_35.is_some() {
                 None
@@ -170,10 +170,10 @@ impl<'de> Dash<'de> for Level<'de, (), Option<u64>, u64> {
             index_37: self.coin_amount.to_serialize_proxy(),
             index_38: self.coins_verified.to_serialize_proxy(),
             index_39: self.stars_requested.to_serialize_proxy(),
-            index_42: self.is_epic.to_serialize_proxy(),
+            index_42: self.epic.to_serialize_proxy(),
             index_45: self.object_amount.to_serialize_proxy(),
-            index_46: self.index_46.to_serialize_proxy(),
-            index_47: self.index_47.to_serialize_proxy(),
+            index_46: self.editor_time.to_serialize_proxy(),
+            index_47: self.editor_time_copies.to_serialize_proxy(),
 
             index_12: self.main_song.map(|song| song.main_song_id).unwrap_or(0),
             index_25: self.difficulty == LevelRating::Auto,
@@ -206,17 +206,24 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
     fn dash_deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let internal = InternalLevel::deserialize(deserializer)?;
 
-        let level_data = match (internal.index_4, internal.index_27, internal.index_28, internal.index_29) {
-            (Some(idx4), Some(idx27), Some(idx28), Some(idx29)) => LevelData {
+        let level_data = match (
+            internal.index_4,
+            internal.index_27,
+            internal.index_28,
+            internal.index_29,
+            internal.index_36,
+            internal.index_40
+        ) {
+            (Some(idx4), Some(idx27), Some(idx28), Some(idx29), Some(idx36), Some(idx40)) => LevelData {
                 level_data: InternalProxy::from_deserialize_proxy(idx4),
                 password: InternalProxy::from_deserialize_proxy(idx27),
                 time_since_upload: InternalProxy::from_deserialize_proxy(idx28),
                 time_since_update: InternalProxy::from_deserialize_proxy(idx29),
-                index_36: InternalProxy::from_deserialize_proxy(internal.index_36.unwrap_or_default()),
-                index_40: InternalProxy::from_deserialize_proxy(internal.index_40.unwrap_or_default()),
-                index_52: InternalProxy::from_deserialize_proxy(internal.index_52.unwrap_or_default()),
-                index_53: InternalProxy::from_deserialize_proxy(internal.index_53.unwrap_or_default()),
-                index_57: InternalProxy::from_deserialize_proxy(internal.index_57.unwrap_or_default()),
+                extra_string: InternalProxy::from_deserialize_proxy(idx36),
+                low_detail_mode: InternalProxy::from_deserialize_proxy(idx40),
+                song_ids: InternalProxy::from_deserialize_proxy(internal.index_52.unwrap_or_default()),
+                sfx_ids: InternalProxy::from_deserialize_proxy(internal.index_53.unwrap_or_default()),
+                verification_time: InternalProxy::from_deserialize_proxy(internal.index_57.unwrap_or_default()),
             },
             _ => return Err(D::Error::custom("Missing indices for level data!")),
         };
@@ -239,10 +246,10 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
             coin_amount: InternalProxy::from_deserialize_proxy(internal.index_37),
             coins_verified: InternalProxy::from_deserialize_proxy(internal.index_38),
             stars_requested: InternalProxy::from_deserialize_proxy(internal.index_39),
-            is_epic: InternalProxy::from_deserialize_proxy(internal.index_42),
+            epic: InternalProxy::from_deserialize_proxy(internal.index_42),
             object_amount: InternalProxy::from_deserialize_proxy(internal.index_45),
-            index_46: InternalProxy::from_deserialize_proxy(internal.index_46),
-            index_47: InternalProxy::from_deserialize_proxy(internal.index_47),
+            editor_time: InternalProxy::from_deserialize_proxy(internal.index_46),
+            editor_time_copies: InternalProxy::from_deserialize_proxy(internal.index_47),
 
             main_song: if internal.index_35.is_some() {
                 None
@@ -287,10 +294,10 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
             index_37: self.coin_amount.to_serialize_proxy(),
             index_38: self.coins_verified.to_serialize_proxy(),
             index_39: self.stars_requested.to_serialize_proxy(),
-            index_42: self.is_epic.to_serialize_proxy(),
+            index_42: self.epic.to_serialize_proxy(),
             index_45: self.object_amount.to_serialize_proxy(),
-            index_46: self.index_46.to_serialize_proxy(),
-            index_47: self.index_47.to_serialize_proxy(),
+            index_46: self.editor_time.to_serialize_proxy(),
+            index_47: self.editor_time_copies.to_serialize_proxy(),
 
             index_12: self.main_song.map(|song| song.main_song_id).unwrap_or(0),
             index_25: self.difficulty == LevelRating::Auto,
@@ -310,11 +317,11 @@ impl<'de> Dash<'de> for Level<'de, LevelData<'de>, Option<u64>, u64> {
             index_27: Some(index_27.borrow()),
             index_28: Some(self.level_data.time_since_upload.to_serialize_proxy()),
             index_29: Some(self.level_data.time_since_update.to_serialize_proxy()),
-            index_36: Some(self.level_data.index_36.to_serialize_proxy()),
-            index_40: Some(self.level_data.index_40.to_serialize_proxy()),
-            index_52: Some(self.level_data.index_52.to_serialize_proxy()),
-            index_53: Some(self.level_data.index_53.to_serialize_proxy()),
-            index_57: Some(self.level_data.index_57.to_serialize_proxy()),
+            index_36: Some(self.level_data.extra_string.to_serialize_proxy()),
+            index_40: Some(self.level_data.low_detail_mode.to_serialize_proxy()),
+            index_52: Some(self.level_data.song_ids.to_serialize_proxy()),
+            index_53: Some(self.level_data.sfx_ids.to_serialize_proxy()),
+            index_57: Some(self.level_data.verification_time.to_serialize_proxy()),
         };
         internal.serialize(serializer)
     }

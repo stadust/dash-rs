@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-// use std::borrow::Cow;
 
 use dash_rs_derive::Dash;
 use serde::{Deserialize, Serialize};
@@ -18,6 +17,13 @@ pub struct LevelComment<'a> {
     #[dash(no_index)]
     pub user: Option<CommentUser<'a>>,
 
+    /// The id of the level that this [`CommentEntry`] was posted to
+    /// This value is negative if it was posted on a list
+    /// This value is only returned on Comment History responses
+    #[dash(index = 1)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level_id: Option<i64>,
+
     /// The actual content of the [`LevelComment`] made.
     #[dash(index = 2)]
     #[serde(borrow)]
@@ -32,7 +38,8 @@ pub struct LevelComment<'a> {
     #[dash(index = 4)]
     pub likes: i32,
 
-    /// The unique id of this [`LevelComment`]. Additionally, there is also no [`ProfileComment`](crate::model::comment::profile::ProfileComment)
+    /// The unique id of this [`LevelComment`]. Additionally,
+    /// there is also no [`ProfileComment`](crate::model::comment::profile::ProfileComment)
     /// with this id
     #[dash(index = 6)]
     pub comment_id: u64,
@@ -73,7 +80,7 @@ impl ThunkProcessor for Color {
     type Error = ProcessError;
     type Output<'a> = Color;
 
-    fn from_unprocessed(unprocessed: Cow<str>) -> Result<Self::Output<'_>, Self::Error> {
+    fn from_unprocessed(unprocessed: Cow<'_, str>) -> Result<Self::Output<'_>, Self::Error> {
         let mut split = unprocessed.split(',');
 
         let r = split.next();

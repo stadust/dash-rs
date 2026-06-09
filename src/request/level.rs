@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize, Serializer};
 use crate::{
     model::{
         level::{DemonRating, LevelLength, LevelRating},
@@ -5,7 +6,6 @@ use crate::{
     },
     request::{endpoint_base_url, BaseRequest, GD_22},
 };
-use serde::{Deserialize, Serialize, Serializer};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -26,20 +26,20 @@ pub struct LevelRequest<'a> {
     /// The ID of the level to download
     ///
     /// ## GD Internals:
-    /// This field is called `levelID` in the boomlings API
+    /// This field is called `levelID` in the Boomlings API
     #[serde(rename = "levelID")]
     pub level_id: u64,
 
     /// Some weird field the Geometry Dash Client sends along
     ///
     /// ## GD Internals:
-    /// This value needs to be converted to an integer for the boomlings API
+    /// This value needs to be converted to an integer for the Boomlings API
     pub inc: bool,
 
     /// Some weird field the Geometry Dash Client sends along
     ///
     /// ## GD Internals:
-    /// This field is called `extras` in the boomlings API and needs to be
+    /// This field is called `extras` in the Boomlings API and needs to be
     /// converted to an integer
     pub extra: bool,
 }
@@ -51,33 +51,16 @@ impl From<u64> for LevelRequest<'_> {
 }
 
 impl<'a> LevelRequest<'a> {
-    const_setter! {
-        /// Sets the [`BaseRequest`] to be used
-        ///
-        /// Allows builder-style creation of requests
-        base[with_base]: BaseRequest<'a>
-    }
+    const_setter! { base[with_base]: BaseRequest<'a> }
 
-    const_setter! {
-        /// Sets the value of the `inc` field
-        ///
-        /// Allows builder-style creation of requests
-        inc: bool
-    }
+    const_setter! { level_id: u64 }
 
-    const_setter! {
-        /// Sets the value of the `extra` field
-        ///
-        /// Allows builder-style creation of requests
-        extra: bool
-    }
+    const_setter! { inc: bool }
 
-    /// Constructs a new `LevelRequest` to retrieve the level with the given id
-    ///
-    /// Uses a default [`BaseRequest`], and sets the
-    /// `inc` field to `true` and `extra` to `false`, as are the default
-    /// values set the by the Geometry Dash Client
-    pub const fn new(level_id: u64) -> LevelRequest<'static> {
+    const_setter! { extra: bool }
+
+
+    pub const fn new(level_id: u64) -> LevelRequest<'a> {
         LevelRequest {
             base: GD_22,
             level_id,
@@ -154,19 +137,19 @@ pub struct SearchFilters {
     /// Only retrieve featured levels
     ///
     /// ## GD Internals:
-    /// This value needs to be converted to an integer for the boomlings API
+    /// This value needs to be converted to an integer for the Boomlings API
     pub featured: bool,
 
     /// Only retrieve original (uncopied)  levels
     ///
     /// ## GD Internals:
-    /// This value needs to be converted to an integer for the boomlings API
+    /// This value needs to be converted to an integer for the Boomlings API
     pub original: bool,
 
     /// Only retrieve two-player levels
     ///
     /// ## GD Internals:
-    /// This field is called `twoPlayer` in the boomlings API and needs to be
+    /// This field is called `twoPlayer` in the Boomlings API and needs to be
     /// converted to an integer
     #[serde(rename = "twoPlayer")]
     pub two_player: bool,
@@ -174,19 +157,19 @@ pub struct SearchFilters {
     /// Only retrieve levels with coins
     ///
     /// ## GD Internals:
-    /// This value needs to be converted to an integer for the boomlings API
+    /// This value needs to be converted to an integer for the Boomlings API
     pub coins: bool,
 
     /// Only retrieve epic levels
     ///
     /// ## GD Internals:
-    /// This value needs to be converted to an integer for the boomlings API
+    /// This value needs to be converted to an integer for the Boomlings API
     pub epic: bool,
 
     /// Only retrieve star rated levels
     ///
     /// ## GD Internals:
-    /// This field is called `star` in the boomlings API and needs to be
+    /// This field is called `star` in the Boomlings API and needs to be
     /// converted to an integer
     #[serde(rename = "star")]
     pub rated: bool,
@@ -195,7 +178,7 @@ pub struct SearchFilters {
     ///
     /// ## GD Internals:
     /// This field composes both the `customSong` and `song` fields of the
-    /// boomlings API. To filter by main song, set the `song` field to the
+    /// Boomlings API. To filter by main song, set the `song` field to the
     /// id of the main song, and omit the `customSong` field from the
     /// request. To filter
     /// by a newgrounds
@@ -297,7 +280,7 @@ impl SearchFilters {
 pub enum LevelRequestType {
     /// A search request.
     ///
-    /// Setting this variant will enabled all the available search filters
+    /// Setting this variant will enable all the available search filters
     ///
     /// ## GD Internals:
     /// This variant is represented by the value `0` in requests
@@ -329,7 +312,7 @@ pub enum LevelRequestType {
     Recent,
 
     /// Retrieve levels by the user whose ID was specified in [`LevelsRequest::search_string`]
-    /// (Note that is has to be the user Id, not the account id)
+    /// (Note that is has to be the user ID, not the account id)
     ///
     /// ## GD Internals:
     /// This variant is represented by the value `5` in requests
@@ -459,7 +442,7 @@ pub struct LevelsRequest<'a> {
     /// The type of level list to retrieve
     ///
     /// ## GD Internals:
-    /// This field is called `type` in the boomlings API and needs to be
+    /// This field is called `type` in the Boomlings API and needs to be
     /// converted to an integer
     #[serde(rename = "type")]
     pub request_type: LevelRequestType,
@@ -470,7 +453,7 @@ pub struct LevelsRequest<'a> {
     /// [`LevelRequestType::Search`] or [`LevelRequestType::User`]
     ///
     /// ## GD Internals:
-    /// This field is called `str` in the boomlings API
+    /// This field is called `str` in the Boomlings API
     #[serde(rename = "str")]
     pub search_string: Cow<'a, str>,
 
@@ -480,7 +463,7 @@ pub struct LevelsRequest<'a> {
     /// [`LevelRequestType::Search`]
     ///
     /// ## GD Internals:
-    /// This field is called `len` in the boomlings API and needs to be
+    /// This field is called `len` in the Boomlings API and needs to be
     /// converted to a comma separated list of integers, or a single dash
     /// (`-`) if filtering by level length isn't wanted.
     #[serde(rename = "len")]
@@ -496,7 +479,7 @@ pub struct LevelsRequest<'a> {
     /// [`LevelRequestType::Search`]
     ///
     /// ## GD Internals:
-    /// This field is called `diff` in the boomlings API and needs to be
+    /// This field is called `diff` in the Boomlings API and needs to be
     /// converted to a comma separated list of integers, or a single dash
     /// (`-`) if filtering by level rating isn't wanted.
     #[serde(rename = "diff")]
@@ -511,7 +494,7 @@ pub struct LevelsRequest<'a> {
     /// [`LevelRequestType::Search`]
     ///
     /// ## GD Internals:
-    /// This field is called `demonFilter` in the boomlings API and needs to be
+    /// This field is called `demonFilter` in the Boomlings API and needs to be
     /// converted to an integer. If filtering by demon rating isn't wanted,
     /// the value has to be omitted from the request.
     #[serde(rename = "demonFilter")]
@@ -674,6 +657,7 @@ mod tests {
         model::level::LevelLength,
         request::level::{CompletionFilter, LevelRequestType, LevelsRequest, SearchFilters},
     };
+    use crate::request::level::LevelRequest;
 
     #[test]
     fn serialize_levels_request() {
@@ -693,6 +677,17 @@ mod tests {
             "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&type=2&str=&len=2,3&diff=-&page=0&total=0&featured=1&original=0&\
              twoPlayer=1&coins=0&epic=1&star=1&completedLevels=(18018958,21373201,22057275,22488444,22008823,23144971,17382902,87600,\
              22031889,22390740,22243264,21923305)&onlyCompleted=0&uncompleted=1"
+        );
+    }
+
+    #[test]
+    fn serialize_level_request() {
+        let request = LevelRequest::default()
+            .level_id(17448979);
+
+        assert_eq!(
+            request.to_string(),
+            "gameVersion=22&binaryVersion=38&secret=Wmfd2893gb7&levelID=17448979&inc=0&extra=0"
         );
     }
 }

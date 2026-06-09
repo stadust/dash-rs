@@ -9,6 +9,7 @@ use std::{
     fmt::{Display, Formatter},
 };
 use variant_partial_eq::VariantPartialEq;
+use crate::model::user::{CommentHistoryState, FriendState, FriendsState, IconType, MessageState};
 
 crate::dash_rs_newtype!(Youtube);
 crate::dash_rs_newtype!(Twitch);
@@ -59,9 +60,24 @@ pub struct Profile<'a> {
     #[dash(index = 4)]
     pub demons: u16,
 
+    /// The global leaderboard position for this [`Profile`].
+    /// This data is returned when requesting leaderboard data, otherwise `None`.
+    #[dash(index = 6)]
+    pub leaderboard_position: Option<u64>,
+
+    /// The account ID for this [`Profile`], just used to highlight leaderboard ranking.
+    /// This data is returned when requesting leaderboard data, otherwise `None`.
+    #[dash(index = 7)]
+    pub account_highlight: Option<u64>,
+
     /// The amount of creator points this [`Profile`] was awarded.
     #[dash(index = 8)]
     pub creator_points: u16,
+
+    /// The icon this [`Profile`] has displayed for leaderboards and comments.
+    /// This data is returned when requesting leaderboard or comment data, otherwise `None`.
+    #[dash(index = 9)]
+    pub icon_id: IconType,
 
     /// This [`Profile`]'s primary color
     ///
@@ -92,13 +108,13 @@ pub struct Profile<'a> {
     #[dash(index = 17)]
     pub user_coins: u16,
 
-    // TODO: figure this value out
+    /// The privacy option for messages that this ['Profile'] has set
     #[dash(index = 18)]
-    pub index_18: Cow<'a, str>,
+    pub message_state: MessageState,
 
-    // TODO: figure this value out
+    /// The privacy option for friends that this ['Profile'] has set
     #[dash(index = 19)]
-    pub index_19: Cow<'a, str>,
+    pub friends_state: FriendsState,
 
     /// The link to the [`Profile`]'s [YouTube](https://youtube.com) channel, if provided
     ///
@@ -107,32 +123,32 @@ pub struct Profile<'a> {
     #[dash(index = 20)]
     pub youtube_url: Option<Youtube<'a>>,
 
-    /// The 1-based index of the cube this [`Profile`] currently uses. Indexing of icons starts at
+    /// The 1-based index of the cube this [`Profile`] currently uses. Indexing of icons starts in
     /// the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 21)]
     pub cube_index: u16,
 
-    /// The 1-based index of the ship this [`Profile`] currently uses. Indexing of icons starts at
+    /// The 1-based index of the ship this [`Profile`] currently uses. Indexing of icons starts in
     /// the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 22)]
     pub ship_index: u8,
 
-    /// The 1-based index of the ball this [`Profile`] currently uses. Indexing of icons starts at
+    /// The 1-based index of the ball this [`Profile`] currently uses. Indexing of icons starts in
     /// the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 23)]
     pub ball_index: u8,
 
-    /// The 1-based index of the UFO this [`Profile`] currently uses. Indexing of icons starts at
+    /// The 1-based index of the UFO this [`Profile`] currently uses. Indexing of icons starts in
     /// the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 24)]
     pub ufo_index: u8,
 
-    /// The 1-based index of the wave this [`Profile`] currently uses. Indexing of icons starts at
+    /// The 1-based index of the wave this [`Profile`] currently uses. Indexing of icons starts in
     /// the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 25)]
     pub wave_index: u8,
 
-    /// The 1-based index of the robot this [`Profile`] currently uses. Indexing of icons starts at
+    /// The 1-based index of the robot this [`Profile`] currently uses. Indexing of icons starts in
     /// the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 26)]
     pub robot_index: u8,
@@ -141,40 +157,44 @@ pub struct Profile<'a> {
     #[dash(index = 28)]
     pub has_glow: bool,
 
-    // TODO: figure this value out
+    /// Flag for if this [`Profile`] is registered or not.
     #[dash(index = 29)]
-    pub index_29: Cow<'a, str>,
+    pub is_registered: bool,
 
     /// This [`Profile`]'s global rank. [`None`] if he is banned or not ranked.
-    ///
-    /// ## GD Internals:
-    /// For unranked/banned users it's `0`. TODO: Why is this an option?
     #[dash(index = 30)]
     pub global_rank: Option<u32>,
 
-    // TODO: figure this value out
+    /// Holds the status of the friend request sent to this [`Profile`] by the [`AuthenticatedUser`].
     #[dash(index = 31)]
-    pub index_31: Cow<'a, str>,
+    pub friend_state: FriendState,
 
-    // TODO: figure this value out
+    /// Number of unread messages this [`Profile`] has.
+    /// This data is only returned when requesting a [`Profile`] as your [`AuthenticatedUser`].
     #[dash(index = 38)]
-    #[dash(default)]
-    #[dash(skip_serializing_if = "Option::is_none")]
-    pub index_38: Option<Cow<'a, str>>,
+    pub unread_messages_count: Option<u32>,
 
-    // TODO: figure this value out
+    /// Number of unread friend requests this [`Profile`] has.
+    /// This data is only returned when requesting a [`Profile`] as your [`AuthenticatedUser`].
     #[dash(index = 39)]
-    #[dash(default)]
-    #[dash(skip_serializing_if = "Option::is_none")]
-    pub index_39: Option<Cow<'a, str>>,
+    pub unread_friend_request_count: Option<u32>,
 
-    // TODO: figure this value out
+    /// Number of new friend this [`Profile`] has.
+    /// This data is only returned when requesting a [`Profile`] as your [`AuthenticatedUser`].
     #[dash(index = 40)]
-    #[dash(default)]
-    #[dash(skip_serializing_if = "Option::is_none")]
-    pub index_40: Option<Cow<'a, str>>,
+    pub new_friends_count: Option<u32>,
 
-    /// The 1-based index of the spider this [`Profile`] currently uses. Indexing of icons starts at
+    /// Flag for if a friend request is new.
+    /// This data is only returned when requesting a [`Profile`] as your [`AuthenticatedUser`].
+    #[dash(index = 41)]
+    pub new_friend_request: Option<bool>,
+
+    /// The time since this [`Profile`] has submitted a new level score.
+    /// This data is only returned when requesting leaderboard data
+    #[dash(index = 42)]
+    pub time_since_score_update: Option<Cow<'a, str>>,
+
+    /// The 1-based index of the spider this [`Profile`] currently uses. Indexing of icons starts in
     /// the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 43)]
     pub spider_index: u8,
@@ -198,7 +218,7 @@ pub struct Profile<'a> {
     pub diamonds: u16,
 
     /// The 1-based index of the death-effect this [`Profile`] currently uses. Indexing of icons
-    /// starts at the top left corner and then goes left-to-right and top-to-bottom
+    /// starts in the top left corner and then goes left-to-right and top-to-bottom
     #[dash(index = 48)]
     pub death_effect_index: u8,
 
@@ -206,26 +226,9 @@ pub struct Profile<'a> {
     #[dash(index = 49)]
     pub mod_level: ModLevel,
 
-    // TODO: figure this value out
+    /// The privacy option this for viewing comment history [`Profile`] has set.
     #[dash(index = 50)]
-    pub index_50: Cow<'a, str>,
-
-    #[dash(index = 51)]
-    pub index_51: Cow<'a, str>,
-
-    /// The number of moons this [`Profile`] has collected
-    #[dash(index = 52)]
-    pub moons: u32,
-
-    /// The 1-based index of the swing this [`Profile`] currently uses. Indexing of icons starts at
-    /// the top left corner and then goes left-to-right and top-to-bottom
-    #[dash(index = 53)]
-    pub swing_index: u8,
-
-    /// The 1-based index of the jetpack this [`Profile`] currently uses. Indexing of icons starts
-    /// at the top left corner and then goes left-to-right and top-to-bottom
-    #[dash(index = 54)]
-    pub jetpack_index: u8,
+    pub comment_history_state: CommentHistoryState,
 }
 
 impl<'de> GJFormat<'de> for Profile<'de> {

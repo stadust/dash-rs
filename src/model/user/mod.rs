@@ -38,7 +38,7 @@ impl From<u8> for ModLevel {
             0 => ModLevel::None,
             1 => ModLevel::Normal,
             2 => ModLevel::Elder,
-            i => ModLevel::Unknown(i),
+            _ => ModLevel::Unknown(i),
         }
     }
 }
@@ -88,13 +88,179 @@ impl From<IconType> for u8 {
     }
 }
 
+/// The user's in game message privacy
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MessageState {
+
+    /// Messages are open to all users
+    /// This is provided by value 0 by Boomlings response for messageState
+    Anyone,
+
+    /// Messages are only open to friends
+    /// This is provided by value 1 by Boomlings response for messageState
+    FriendsOnly,
+
+    /// Messages cannot be sent to this user
+    /// This is provided by value 2 by Boomlings response for messageState
+    NoOne,
+
+    /// Unknown or invalid value
+    Unknown(u8)
+}
+
+impl From<MessageState> for u8 {
+    fn from(state: MessageState) -> u8 {
+        match state {
+            MessageState::Anyone => 0,
+            MessageState::FriendsOnly => 1,
+            MessageState::NoOne => 2,
+            MessageState::Unknown(inner) => inner,
+        }
+    }
+}
+
+impl From<u8> for MessageState {
+    fn from(i: u8) -> Self {
+        match i {
+            0 => MessageState::Anyone,
+            1 => MessageState::FriendsOnly,
+            2 => MessageState::NoOne,
+            _ => MessageState::Unknown(i)
+        }
+    }
+}
+
+/// The user's in game message privacy
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FriendsState {
+
+    /// Friend requests are open to all users, this is provided by value 0 by Boomlings response for friendsState
+    Anyone,
+
+    /// Friend requests cannot be sent to this user, this is provided by value 1 by Boomlings response for friendsState
+    NoOne,
+
+    /// Unknown or invalid value
+    Unknown(u8)
+}
+
+impl From<FriendsState> for u8 {
+    fn from(state: FriendsState) -> u8 {
+        match state {
+            FriendsState::Anyone => 0,
+            FriendsState::NoOne => 1,
+            FriendsState::Unknown(inner) => inner,
+        }
+    }
+}
+
+impl From<u8> for FriendsState {
+    fn from(i: u8) -> Self {
+        match i {
+            0 => FriendsState::Anyone,
+            1 => FriendsState::NoOne,
+            _ => FriendsState::Unknown(i)
+        }
+    }
+}
+
+/// The user's status of a friend request for a given [`AuthenticatedUser`]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FriendState {
+
+    /// The [`AuthenticatedUser`] has not sent a friend request to this profile
+    /// This is provided by value 0 by Boomlings response for friendsState
+    NoRequest,
+
+    /// The [`AuthenticatedUser`] is already friends with this profile
+    /// This is provided by value 1 by Boomlings response for friendsState
+    AlreadyFriends,
+
+    /// The [`AuthenticatedUser`] has sent a request to this profile but the profile has not responded
+    /// This is provided by value 3 by Boomlings response for friendsState
+    RequestPendingByProfile,
+
+    /// The profile has sent a request to the [`AuthenticatedUser`] but the [`AuthenticatedUser`] has not responded
+    /// This is provided by value 4 by Boomlings response for friendsState
+    RequestPendingByUser,
+
+    /// Unknown or invalid value
+    Unknown(u8)
+}
+
+impl From<FriendState> for u8 {
+    fn from(state: FriendState) -> u8 {
+        match state {
+            FriendState::NoRequest => 0,
+            FriendState::AlreadyFriends => 1,
+            FriendState::RequestPendingByProfile => 3,
+            FriendState::RequestPendingByUser => 4,
+            FriendState::Unknown(inner) => inner,
+        }
+    }
+}
+
+impl From<u8> for FriendState {
+    fn from(i: u8) -> Self {
+        match i {
+            0 => FriendState::NoRequest,
+            1 => FriendState::AlreadyFriends,
+            3 => FriendState::RequestPendingByProfile,
+            4 => FriendState::RequestPendingByUser,
+            _ => FriendState::Unknown(i),
+        }
+    }
+}
+
+/// The user's comment history privacy
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CommentHistoryState {
+
+    /// Messages are open to all users
+    /// This is provided by value 0 by Boomlings response for messageState
+    Anyone,
+
+    /// Messages are only open to friends
+    /// This is provided by value 1 by Boomlings response for messageState
+    FriendsOnly,
+
+    /// Messages cannot be sent to this user
+    /// This is provided by value 2 by Boomlings response for messageState
+    NoOne,
+
+    /// Unknown or invalid value
+    Unknown(u8)
+}
+
+impl From<CommentHistoryState> for u8 {
+    fn from(state: CommentHistoryState) -> u8 {
+        match state {
+            CommentHistoryState::Anyone => 0,
+            CommentHistoryState::FriendsOnly => 1,
+            CommentHistoryState::NoOne => 2,
+            CommentHistoryState::Unknown(inner) => inner,
+        }
+    }
+}
+
+impl From<u8> for CommentHistoryState {
+    fn from(i: u8) -> Self {
+        match i {
+            0 => CommentHistoryState::Anyone,
+            1 => CommentHistoryState::FriendsOnly,
+            2 => CommentHistoryState::NoOne,
+            _ => CommentHistoryState::Unknown(i),
+        }
+    }
+}
+
 // Enum representing an in-game icon color
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub enum Color {
     /// A color whose index was known to dash-rs which could be converted to RGB values
     Known(u8, u8, u8),
 
-    /// The index of some unknown colors. This variant will be constructed if robtop ever adds more
+    /// The index of some unknown colors. This variant will be constructed if RobTop ever adds more
     /// colors and while dash-rs hasn't updated yet
     Unknown(u8),
 }
@@ -204,3 +370,7 @@ impl From<Color> for u8 {
 
 crate::into_conversion!(Color, u8);
 crate::into_conversion!(IconType, u8);
+crate::into_conversion!(MessageState, u8);
+crate::into_conversion!(FriendsState, u8);
+crate::into_conversion!(FriendState, u8);
+crate::into_conversion!(CommentHistoryState, u8);

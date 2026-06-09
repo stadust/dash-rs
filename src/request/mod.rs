@@ -8,7 +8,12 @@
 
 use std::sync::OnceLock;
 
-use crate::{model::GameVersion, serde::RequestSerializer};
+use crate::{
+    model::{
+        GameVersion
+    },
+    serde::RequestSerializer,
+};
 use serde::{Deserialize, Serialize};
 
 macro_rules! const_setter {
@@ -46,6 +51,8 @@ macro_rules! const_setter {
 pub mod comment;
 pub mod level;
 pub mod user;
+pub mod account;
+pub mod moderator;
 
 pub static GD_SERVER_ENDPOINT_BASE_URL: OnceLock<String> = OnceLock::new();
 
@@ -55,12 +62,21 @@ pub fn endpoint_base_url() -> &'static str {
 
 pub const BOOMLINGS_ENDPOINTS_BASE: &str = "https://www.boomlings.com/database/";
 
+pub const SECRET: &str = "Wmfd2893gb7";
+pub const ACCOUNT_SECRET: &str = "Wmfv3899gc9";
+
+pub const MODERATOR_SECRET: &str = "Wmfp3879gc3";
+
+pub const CONTENT_TYPE: &str = "Content-Type";
+pub const URL_FORM_ENCODED: &str = "application/x-www-form-urlencoded";
+
 /// A `BaseRequest` instance that has all its fields set to the
 /// same values a Geometry Dash 2.1 client would use
-pub const GD_21: BaseRequest = BaseRequest::new(
-    GameVersion::Version { major: 2, minor: 1 },
-    GameVersion::Version { major: 3, minor: 3 },
-    "Wmfd2893gb7",
+
+pub const MODERATOR_GD_22: BaseRequest = BaseRequest::new(
+    GameVersion::Version { major: 2, minor: 2 },
+    GameVersion::Version { major: 3, minor: 8 },
+    MODERATOR_SECRET,
 );
 
 /// A `BaseRequest` instance that has all its fields set to the
@@ -68,7 +84,7 @@ pub const GD_21: BaseRequest = BaseRequest::new(
 pub const GD_22: BaseRequest = BaseRequest::new(
     GameVersion::Version { major: 2, minor: 2 },
     GameVersion::Version { major: 3, minor: 8 },
-    "Wmfd2893gb7",
+    SECRET,
 );
 
 /// Base data included in every request made
