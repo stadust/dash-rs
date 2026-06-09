@@ -280,7 +280,7 @@ impl SearchFilters {
 pub enum LevelRequestType {
     /// A search request.
     ///
-    /// Setting this variant will enabled all the available search filters
+    /// Setting this variant will enable all the available search filters
     ///
     /// ## GD Internals:
     /// This variant is represented by the value `0` in requests
@@ -312,7 +312,7 @@ pub enum LevelRequestType {
     Recent,
 
     /// Retrieve levels by the user whose ID was specified in [`LevelsRequest::search_string`]
-    /// (Note that is has to be the user Id, not the account id)
+    /// (Note that is has to be the user ID, not the account id)
     ///
     /// ## GD Internals:
     /// This variant is represented by the value `5` in requests
@@ -659,8 +659,8 @@ mod tests {
     };
     use crate::request::level::LevelRequest;
 
-    #[tokio::test]
-    async fn serialize_levels_request() {
+    #[test]
+    fn serialize_levels_request() {
         let request =
             LevelsRequest::default()
                 .request_type(LevelRequestType::MostLiked)
@@ -680,8 +680,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn serialize_level_request() {
+    #[test]
+    fn serialize_level_request() {
         let request = LevelRequest::default()
             .level_id(17448979);
 
